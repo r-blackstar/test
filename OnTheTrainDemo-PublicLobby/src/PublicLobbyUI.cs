@@ -4,20 +4,20 @@ using UnityEngine;
 namespace OnTheTrainDemoPublicLobby
 {
     /// <summary>
-    /// 公开大厅 UI v1.0.2：
-    /// - 屏幕侧边显示一个圆形按钮，点击弹出大厅信息面板
+    /// 公开大厅 UI v1.0.3：
+    /// - 屏幕右侧显示一个侧边按钮，点击弹出大厅信息面板
     /// - 面板显示当前大厅 ID、成员列表、搜索状态等
-    /// - 不再使用 F8 快捷键
+    /// - 面板内提供「关闭公开大厅」按钮：运行时切换 PublicLobby 模式并保存配置
+    ///   关闭后建主与搜索走游戏原方法，恢复好友大厅搜索行为
     /// </summary>
     internal static class PublicLobbyUI
     {
         private const int WindowId = 0x7A88;
-        private const int ButtonId = 0x7A89;
 
-        // 侧边按钮（始终显示）
-        private static Rect _sideButton = new Rect(8, Screen.height / 2 - 40, 32, 80);
+        // 侧边按钮（始终显示在屏幕右侧）
+        private static Rect _sideButton = new Rect(Screen.width - 40, Screen.height / 2 - 40, 32, 80);
         // 弹窗（点击按钮后显示）
-        private static Rect _window = new Rect(80, 80, 480, 520);
+        private static Rect _window = new Rect(80, 80, 480, 560);
         private static bool _open;
         private static Vector2 _memberScroll;
 
@@ -43,7 +43,7 @@ namespace OnTheTrainDemoPublicLobby
 
         public static void Draw()
         {
-            // 始终绘制屏幕侧边按钮
+            // 始终绘制屏幕右侧侧边按钮
             DrawSideButton();
 
             // 弹窗（仅当 _open 时）
@@ -53,18 +53,20 @@ namespace OnTheTrainDemoPublicLobby
             {
                 DrawContent();
                 GUI.DragWindow(new Rect(0, 0, 10000, 24));
-            }, "公开大厅信息 v1.0.2 - 点击外侧关闭");
+            }, "公开大厅信息 v1.0.3");
         }
 
         private static void DrawSideButton()
         {
-            // 自适应屏幕尺寸（窗口大小可能变化）
+            // 自适应屏幕尺寸（右侧贴边）
+            _sideButton.x = Screen.width - 40;
             if (_sideButton.y > Screen.height - 100)
                 _sideButton.y = Screen.height / 2 - 40;
 
             var oldBg = GUI.backgroundColor;
             GUI.backgroundColor = _open ? new Color(0.4f, 0.7f, 1f, 1f) : new Color(0.2f, 0.5f, 0.85f, 0.85f);
-            var label = _open ? "◀" : "▶";
+            // 右侧按钮：开启时显示 ◀（点击向左收起），关闭时显示 ▶（点击向左展开）
+            var label = _open ? "▶" : "◀";
             if (GUI.Button(_sideButton, label, GUI.skin.box))
             {
                 _open = !_open;
@@ -74,6 +76,11 @@ namespace OnTheTrainDemoPublicLobby
 
         private static void DrawContent()
         {
+            // 公开模式状态与开关
+            DrawPublicModeToggle();
+
+            GUILayout.Space(6);
+
             // Steam 状态
             GUILayout.Label("Steam 状态：" + (SteamManager.Initialized ? "已连接" : "未连接"), GUI.skin.box);
 
@@ -150,8 +157,32 @@ namespace OnTheTrainDemoPublicLobby
             }
 
             GUILayout.Space(8);
-            GUILayout.Label("说明：模组默认开启公开模式，建主用 Public 类型，陌生人可通过加入游戏搜到。", GUI.skin.label);
-            GUILayout.Label("如需关闭，修改 cfg 文件 PublicLobby=false", GUI.skin.label);
+            if (Settings.PublicLobby != null && Settings.PublicLobby.Value)
+            {
+                GUILayout.Label("说明：公开模式已开启，建主用 Public 类型，陌生人可搜到。", GUI.skin.label);
+                GUILayout.Label("点击上方「关闭公开大厅」可恢复游戏原生行为。", GUI.skin.label);
+            }
+            else
+            {
+                GUILayout.Label("说明：公开模式已关闭，建主与搜索走游戏原方法（仅好友）。", GUI.skin.label);
+                GUILayout.Label("点击上方「开启公开大厅」可重新启用模组。", GUI.skin.label);
+            }
+        }
+
+        /// <summary>绘制公开模式开关按钮，运行时切换并保存配置。</summary>
+        private static void DrawPublicModeToggle()
+        {
+            bool isOn = Settings.PublicLobby != null && Settings.PublicLobby.Value;
+            var oldBg = GUI.backgroundColor;
+            GUI.backgroundColor = isOn ? new Color(0.85f, 0.3f, 0.3f, 1f) : new Color(0.3f, 0.75f, 0.4f, 1f);
+            string btnText = isOn ? "关闭公开大厅" : "开启公开大厅";
+            if (GUILayout.Button(btnText, GUILayout.Height(32)))
+            {
+                Settings.Toggle();
+            }
+            GUI.backgroundColor = oldBg;
+
+            GUILayout.Label("当前状态：" + (isOn ? "● 公开模式（陌生人可搜到）" : "○ 好友模式（游戏原生）"), GUI.skin.label);
         }
 
         /// <summary>显示当前大厅详细信息：成员列表、大厅数据等。</summary>

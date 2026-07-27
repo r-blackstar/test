@@ -2,18 +2,23 @@ using MelonLoader;
 using Steamworks;
 using UnityEngine;
 
-[assembly: MelonInfo(typeof(OnTheTrainDemoPublicLobby.Main), "On The Train Demo Public Lobby", "1.0.2", "DestinyWind")]
+[assembly: MelonInfo(typeof(OnTheTrainDemoPublicLobby.Main), "On The Train Demo Public Lobby", "1.0.3", "DestinyWind")]
 [assembly: MelonGame("EastUpInteractive", "On The Train Demo")]
 
 namespace OnTheTrainDemoPublicLobby
 {
     /// <summary>
-    /// On The Train Demo 公开大厅模组 v1.0.2。
+    /// On The Train Demo 公开大厅模组 v1.0.3。
+    ///
+    /// v1.0.3 变更：
+    ///   - 侧边按钮移至屏幕右侧
+    ///   - UI 面板内新增「关闭公开大厅」/「开启公开大厅」按钮，运行时切换并保存配置
+    ///   - 关闭后建主与搜索走游戏原方法（好友大厅），游戏原生搜索行为完全恢复
+    ///   - UI 不关闭，仍可随时查看大厅信息并重新开启
     ///
     /// v1.0.2 变更：
     ///   - 默认开启公开大厅模式（安装即生效，无需手动启用）
     ///   - 移除 F8 快捷键，改为屏幕侧边按钮（点击弹窗显示大厅信息和成员列表）
-    ///   - 仅保留 cfg 文件开关供高级用户关闭
     ///
     /// 游戏原生 HostLobby 用 (ELobbyType)(lobbyMode==0) 创建大厅，只能得到 Private/FriendsOnly，
     /// 陌生人无法搜到。本模组：
@@ -28,9 +33,9 @@ namespace OnTheTrainDemoPublicLobby
             Settings.Register();
             PublicLobbyPatches.Initialize();
 
-            MelonLogger.Msg("[PublicLobby] ===== On The Train Demo Public Lobby v1.0.2 loaded =====");
+            MelonLogger.Msg("[PublicLobby] ===== On The Train Demo Public Lobby v1.0.3 loaded =====");
             MelonLogger.Msg("[PublicLobby] Public mode is " + (Settings.PublicLobby.Value ? "ON" : "OFF") + " by default.");
-            MelonLogger.Msg("[PublicLobby] Click the side button on screen to view lobby info.");
+            MelonLogger.Msg("[PublicLobby] Click the right side button to view lobby info and toggle mode.");
             MelonLogger.Msg("[PublicLobby] SteamManager.Initialized = " + SteamManager.Initialized);
             try
             {

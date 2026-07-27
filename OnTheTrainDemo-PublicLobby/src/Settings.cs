@@ -20,13 +20,13 @@ namespace OnTheTrainDemoPublicLobby
             PublicLobby = _category.CreateEntry(nameof(PublicLobby), true, "Public Lobby Mode (strangers can find & join)");
         }
 
-        /// <summary>切换公开大厅模式并保存配置（高级用户用）。</summary>
+        /// <summary>切换公开大厅模式并保存配置（UI 按钮调用）。</summary>
         public static void Toggle()
         {
             if (PublicLobby == null) return;
             PublicLobby.Value = !PublicLobby.Value;
             MelonPreferences.Save();
-            MelonLogger.Msg("[PublicLobby] Mode toggled to: " + PublicLobby.Value);
+            MelonLogger.Msg("[PublicLobby] Mode toggled via UI to: " + (PublicLobby.Value ? "ON (Public)" : "OFF (FriendsOnly, game native)"));
         }
     }
 }
