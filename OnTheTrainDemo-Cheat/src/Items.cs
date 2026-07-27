@@ -412,7 +412,7 @@ namespace OnTheTrainDemoCheat
         public static void GatherNearby(float radius = 20f, int max = 30)
         {
             var inv = LocalInventory;
-            if (inv == null) { MelonLogger.Warning("[Gather] Local PlayerInventory not found."); return; }
+            if (inv == null) { MelonLogger.Msg("[Gather] 请先进入游戏场景再使用采集功能。"); return; }
             _playerInvType = _playerInvType ?? ReflectionUtil.FindType("PlayerInventory");
             // v1.5.8：取消上一个未完成的协程，避免并发干扰
             if (_activeGather != null)
@@ -618,25 +618,38 @@ namespace OnTheTrainDemoCheat
                 }
             }
 
-            // 2) Fallback: any PlayerInventory whose GameObject has a NetworkBehaviour with isLocalPlayer
-            // v1.5.8：移除 all[0] fallback，避免多人模式下把物品给到错误玩家
+            // 2) Fallback: 找所有 PlayerInventory，检查其 GameObject 上的 TSPlayerController.isLocalPlayer
+            // v1.5.8 修正：PlayerInventory 继承 MonoBehaviour 不是 NetworkBehaviour，原代码 GetComponents(nbType) 永远空
+            //   正确做法：PlayerInventory 所在 GameObject 上有 TSPlayerController（NetworkBehaviour），检查它的 isLocalPlayer
             var all = UnityEngine.Object.FindObjectsOfType(_playerInvType);
-            var nbType = ReflectionUtil.FindType("Mirror.NetworkBehaviour") ?? ReflectionUtil.FindType("NetworkBehaviour");
+            var playerCtrlType = ReflectionUtil.FindType("TSPlayerController");
             foreach (var o in all)
             {
                 var c = o as Component;
                 if (c == null) continue;
-                if (nbType != null)
+                // 检查同 GameObject 上的 TSPlayerController
+                if (playerCtrlType != null)
                 {
-                    foreach (var nb in c.GetComponents(nbType))
+                    var ctrl = c.GetComponent(playerCtrlType);
+                    if (ctrl != null)
                     {
-                        var ilp = nb.GetType().GetProperty("isLocalPlayer")?.GetValue(nb, null);
+                        var ilp = ctrl.GetType().GetProperty("isLocalPlayer")?.GetValue(ctrl, null);
                         if (ilp is bool b && b) return o;
                     }
                 }
             }
-            // v1.5.8：找不到 localPlayer 时返回 null，避免误给陌生人
-            MelonLogger.Warning("[Items] No local PlayerInventory found (isLocalPlayer check failed).");
+            // v1.5.8：单人模式或 TSPlayerController 尚未生成时，若场景中只有一个 PlayerInventory，返回它
+            if (all.Length == 1)
+            {
+                MelonLogger.Msg("[Items] Only one PlayerInventory in scene, using it (single-player fallback).");
+                return all[0];
+            }
+            // v1.5.10：all.Length == 0 表示还在主菜单/未进入游戏场景，属于预期情况，静默返回不刷日志
+            // 只有 all.Length > 1 且都找不到 isLocalPlayer 才是真正异常
+            if (all.Length > 1)
+            {
+                MelonLogger.Warning("[Items] No local PlayerInventory found (isLocalPlayer check failed, count=" + all.Length + ").");
+            }
             return null;
         }
 

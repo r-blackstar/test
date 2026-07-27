@@ -1,5 +1,14 @@
 # 作弊模组 更新日志
 
+## v1.5.10 - 2026-07-27
+
+### 修复：主菜单日志噪音
+
+- 修复 `FindLocalInventory` 在主菜单/未进入游戏场景时（`all.Length == 0`）反复输出 `No local PlayerInventory found` 警告的问题
+- 现在 `all.Length == 0` 时静默返回 null（预期情况，无需告警）
+- 只有 `all.Length > 1` 且都找不到 `isLocalPlayer` 时才输出 Warning（真正异常）
+- `GatherNearby` 前置检查的日志从 Warning 降级为 Msg，提示文案改为「请先进入游戏场景再使用采集功能」
+
 ## v1.5.8 - 2026-07-27
 
 ### 健壮性加固（基于全量代码审查）
