@@ -1,5 +1,7 @@
-﻿using System.Collections.Generic;
+using System;
+using System.Collections.Generic;
 using System.Linq;
+using MelonLoader;
 using UnityEngine;
 
 namespace OnTheTrainDemoCheat
@@ -44,10 +46,21 @@ namespace OnTheTrainDemoCheat
 
             _window = GUILayout.Window(WindowId, _window, (id) =>
             {
-                DrawHeader();
-                DrawSearchBar();
-                DrawItemList();
-                GUILayout.Label(I18n.Get("browser.hint"), GUI.skin.box);
+                // v1.5.8：异常保护，避免 IMGUI layout stack 损坏导致窗口永久不可用
+                try
+                {
+                    DrawHeader();
+                    DrawSearchBar();
+                    DrawItemList();
+                    GUILayout.Label(I18n.Get("browser.hint"), GUI.skin.box);
+                }
+                catch (Exception e)
+                {
+                    MelonLogger.Warning("[ItemBrowserUI] draw failed: " + e.Message);
+                    // 尽力恢复 IMGUI 平衡
+                    try { GUILayout.EndHorizontal(); } catch { }
+                    try { GUILayout.EndScrollView(); } catch { }
+                }
                 GUI.DragWindow(new Rect(0, 0, 10000, 24));
             }, I18n.Get("browser.title"));
         }
@@ -176,7 +189,12 @@ namespace OnTheTrainDemoCheat
                 else if (e != null && e.shift)
                 {
                     // Shift+点击 = 给10倍堆叠
-                    Items.Give(entry.ItemName, entry.StackLimit * 10);
+                    // v1.5.8：防止 int.MaxValue * 10 溢出为负数
+                    int giveAmount = entry.StackLimit;
+                    if (giveAmount > 0 && giveAmount <= int.MaxValue / 10)
+                        giveAmount *= 10;
+                    // 否则保持原值（已接近 int.MaxValue）
+                    Items.Give(entry.ItemName, giveAmount);
                 }
                 else
                 {

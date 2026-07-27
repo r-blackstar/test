@@ -19,7 +19,7 @@
   "action.reload_lang": "Reload Language File",
   "action.give": "Give",
   "action.list_items": "List Item Names (console)",
-  "action.gather": "Chop/Mine Nearby",
+  "action.gather": "Gather Nearby (Tree/Ore/Scrap/Forage)",
 
   "section.items": "Give Items",
   "section.language": "Language",

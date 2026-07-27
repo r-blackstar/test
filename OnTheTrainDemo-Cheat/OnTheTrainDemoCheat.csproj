@@ -10,9 +10,9 @@
     <OutputPath>bin\$(Configuration)</OutputPath>
     <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
-    <Version>1.5.6</Version>
-    <FileVersion>1.5.6.0</FileVersion>
-    <AssemblyVersion>1.5.6.0</AssemblyVersion>
+    <Version>1.5.8</Version>
+    <FileVersion>1.5.8.0</FileVersion>
+    <AssemblyVersion>1.5.8.0</AssemblyVersion>
     <Company>DestinyWind</Company>
     <Authors>DestinyWind</Authors>
     <Copyright>DestinyWind</Copyright>

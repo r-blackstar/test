@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
@@ -216,12 +216,15 @@ namespace OnTheTrainDemoCheat
         }
 
         /// <summary>取文案。{0} {1} ... 用 args 填充。未找到时返回 key 本身。</summary>
+        // v1.5.8：string.Format 失败时返回 key，避免格式错误导致全局崩溃
         public static string Get(string key, params object[] args)
         {
             string s;
             if (!_strings.TryGetValue(key, out s) || string.IsNullOrEmpty(s))
                 s = key;
-            return (args != null && args.Length > 0) ? string.Format(s, args) : s;
+            if (args == null || args.Length == 0) return s;
+            try { return string.Format(s, args); }
+            catch (FormatException) { return s; }
         }
 
         /// <summary>

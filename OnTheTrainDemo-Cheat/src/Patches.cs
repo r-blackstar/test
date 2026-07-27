@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections;
 using System.Reflection;
 using HarmonyLib;
@@ -30,6 +30,8 @@ namespace OnTheTrainDemoCheat
 
         public static void Install()
         {
+            // v1.5.8：防止重复安装
+            if (_harmony != null) return;
             _harmony = new HarmonyLib.Harmony(InstanceId);
 
             // God Mode: skip incoming damage from BOTH paths.
@@ -124,6 +126,7 @@ namespace OnTheTrainDemoCheat
 
         // Restore the original neededItemsData after Craft() ran. Without this the UI would
         // permanently lose its cost list and the recipe panel would render without costs.
+        // v1.5.8：postfix 失败时尝试用空列表兜底，避免 UI 永久损坏
         private static void FreeCraftPostfix(object __instance, IList __state)
         {
             if (!Settings.FreeCraft.Value || __state == null) return;
@@ -133,7 +136,15 @@ namespace OnTheTrainDemoCheat
             }
             catch (Exception e)
             {
-                MelonLogger.Warning("[Patch] FreeCraft postfix failed: " + e.Message);
+                MelonLogger.Error("[Patch] FreeCraft postfix FAILED to restore neededItemsData! UI may be broken. " + e.Message);
+                // 兜底：尝试用空列表让 UI 至少不崩
+                try
+                {
+                    var listType = __state.GetType();
+                    var empty = (IList)Activator.CreateInstance(listType);
+                    ReflectionUtil.SetMemberValue(__instance, empty, "neededItemsData");
+                }
+                catch { }
             }
         }
 

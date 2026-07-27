@@ -19,7 +19,7 @@
   "action.reload_lang": "重载语言文件",
   "action.give": "给予",
   "action.list_items": "列出物品名（控制台）",
-  "action.gather": "砍树/挖矿附近",
+  "action.gather": "采集附近（树/矿/废料/拾取）",
 
   "section.items": "一键资源 / 给物品",
   "section.language": "语言",

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Reflection;
@@ -39,12 +39,20 @@ namespace OnTheTrainDemoCheat
         private const BindingFlags StaticFlags =
             BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static;
 
+        // v1.5.8：FindLocalInventory 失败冷却，避免每帧全场景扫描
+        private static float _lastInvFindTime;
+        private const float InvFindCooldown = 2f;
+
         public static object LocalInventory
         {
             get
             {
                 if (_localInv is UnityEngine.Object u && u == null) _localInv = null;
-                _localInv = _localInv ?? FindLocalInventory();
+                if (_localInv == null && Time.unscaledTime - _lastInvFindTime > InvFindCooldown)
+                {
+                    _lastInvFindTime = Time.unscaledTime;
+                    _localInv = FindLocalInventory();
+                }
                 return _localInv;
             }
         }
@@ -393,13 +401,26 @@ namespace OnTheTrainDemoCheat
             return 32;
         }
 
-        /// <summary>Best-effort: hit every tree/ore node within `radius` with lethal damage.</summary>
-        public static void GatherNearby(float radius = 40f, int max = 40)
+        /// <summary>
+        /// Best-effort: 一键采集附近的树木/矿石/地表拾取物/渐进式采集物（金属废料等）。
+        /// v1.5.7：radius 从 40 缩小到 20，max 从 40 调整为 30，新增 LootableTerrainItem 和 LootableTerrainItemProgressive 支持。
+        /// v1.5.8：协程单例控制（避免并发），每次调用前检测 inv 有效性。
+        /// </summary>
+        // v1.5.8：MelonCoroutines.Start 返回 object，用 object 保存协程引用
+        private static object _activeGather;
+
+        public static void GatherNearby(float radius = 20f, int max = 30)
         {
             var inv = LocalInventory;
             if (inv == null) { MelonLogger.Warning("[Gather] Local PlayerInventory not found."); return; }
             _playerInvType = _playerInvType ?? ReflectionUtil.FindType("PlayerInventory");
-            MelonCoroutines.Start(GatherRoutine(inv, radius, max));
+            // v1.5.8：取消上一个未完成的协程，避免并发干扰
+            if (_activeGather != null)
+            {
+                try { MelonCoroutines.Stop(_activeGather); } catch { }
+                _activeGather = null;
+            }
+            _activeGather = MelonCoroutines.Start(GatherRoutine(inv, radius, max));
         }
 
         /// <summary>Print every loaded CollectableItemData.itemName to the MelonLoader console.</summary>
@@ -425,9 +446,23 @@ namespace OnTheTrainDemoCheat
             Vector3 center = pinv != null ? pinv.transform.position : Vector3.zero;
             var invType = _playerInvType ?? ReflectionUtil.FindType("PlayerInventory");
             int done = 0;
+            bool reachedCap = false;
 
-            foreach (var typeName in new[] { "TreeCollectable", "OreCollectable" })
+            // v1.5.7：三类采集对象
+            //   TreeCollectable / OreCollectable        -> GetDamage(inv, 99999f, point) 瞬采
+            //   LootableTerrainItem                      -> Take(player)  单次拾取（蘑菇/草药等）
+            //   LootableTerrainItemProgressive           -> 反射调用 FinishLooting() 完成渐进采集（金属废料等）
+            var breakableTypes = new[]
             {
+                "TreeCollectable",                 // 砍树
+                "OreCollectable",                  // 挖矿
+                "LootableTerrainItem",             // 地表拾取物（单次采集）
+                "LootableTerrainItemProgressive"   // 渐进式采集（金属废料等，长按 F）
+            };
+
+            foreach (var typeName in breakableTypes)
+            {
+                if (reachedCap) break;
                 var t = ReflectionUtil.FindType(typeName);
                 if (t == null) continue;
                 var arr = UnityEngine.Object.FindObjectsOfType(t);
@@ -439,34 +474,110 @@ namespace OnTheTrainDemoCheat
                     return Vector3.Distance(center, pa).CompareTo(Vector3.Distance(center, pb));
                 });
 
-                var getDamage = t.GetMethod("GetDamage",
-                    new[] { invType, typeof(float), typeof(Vector3) });
+                // 按类型选择采集方法
+                MethodInfo gatherMethod = null;
+                bool isTakeStyle = false;       // Take(player)
+                bool isFinishStyle = false;     // FinishLooting()
+                if (typeName == "TreeCollectable" || typeName == "OreCollectable")
+                {
+                    gatherMethod = t.GetMethod("GetDamage",
+                        new[] { invType, typeof(float), typeof(Vector3) });
+                }
+                else if (typeName == "LootableTerrainItem")
+                {
+                    gatherMethod = t.GetMethod("Take", new[] { invType });
+                    isTakeStyle = true;
+                }
+                else if (typeName == "LootableTerrainItemProgressive")
+                {
+                    // LootableTerrainItemProgressive 的 Take 方法不存在，Interact 只是开锁住按 F
+                    // 直接反射调用 private FinishLooting() 跳过渐进流程，立即完成并给物品
+                    // 注意有重载：FinishLooting() 和 FinishLooting(PlayerInventory)，取无参版本
+                    var methods = t.GetMethods(BindingFlags.NonPublic | BindingFlags.Instance);
+                    foreach (var m in methods)
+                    {
+                        if (m.Name == "FinishLooting" && m.GetParameters().Length == 0)
+                        {
+                            gatherMethod = m;
+                            break;
+                        }
+                    }
+                    isFinishStyle = true;
+                }
+
+                if (gatherMethod == null)
+                {
+                    MelonLogger.Warning("[Gather] " + typeName + ": no gather method found, skip.");
+                    continue;
+                }
 
                 foreach (var o in list)
                 {
-                    if (done >= max) { MelonLogger.Msg("[Gather] reached cap (" + max + ")."); yield break; }
+                    // v1.5.8：每次迭代前检测 inv 是否仍有效（玩家可能已离开场景/死亡）
+                    if (pinv is UnityEngine.Object u && u == null)
+                    {
+                        MelonLogger.Warning("[Gather] Player destroyed mid-routine, abort.");
+                        yield break;
+                    }
+                    if (done >= max) { reachedCap = true; break; }
                     var c = o as Component;
                     if (c == null) continue;
                     float d = Vector3.Distance(center, c.transform.position);
                     if (d > radius) break; // sorted ascending, rest are farther
                     try
                     {
-                        getDamage?.Invoke(o, new object[] { inv, 99999f, c.transform.position });
+                        if (isTakeStyle)
+                        {
+                            // Take(player)
+                            gatherMethod.Invoke(o, new object[] { inv });
+                        }
+                        else if (isFinishStyle)
+                        {
+                            // LootableTerrainItemProgressive.FinishLooting() 是 private
+                            // v1.5.8：player 字段 null 检查，若字段不存在跳过该对象
+                            var playerField = t.GetField("player",
+                                BindingFlags.NonPublic | BindingFlags.Instance);
+                            if (playerField == null)
+                            {
+                                MelonLogger.Warning("[Gather] " + typeName + ": 'player' field not found, skip object.");
+                                continue;
+                            }
+                            playerField.SetValue(o, inv);
+                            gatherMethod.Invoke(o, null);
+                        }
+                        else
+                        {
+                            // GetDamage(inv, 99999f, point)
+                            gatherMethod.Invoke(o, new object[] { inv, 99999f, c.transform.position });
+                        }
                         done++;
                     }
                     catch (System.Exception e)
                     {
-                        MelonLogger.Warning("[Gather] " + (e.InnerException?.Message ?? e.Message));
+                        MelonLogger.Warning("[Gather] " + typeName + ": " + (e.InnerException?.Message ?? e.Message));
                     }
                     if ((done % 5) == 0) yield return null; // pace to avoid flooding one frame
                 }
+                MelonLogger.Msg("[Gather] " + typeName + " processed, total done=" + done);
             }
-            MelonLogger.Msg("[Gather] processed " + done + " nodes within " + radius + "m.");
+            MelonLogger.Msg("[Gather] processed " + done + " nodes within " + radius + "m" + (reachedCap ? " (reached cap " + max + ")" : "") + ".");
+            _activeGather = null;
         }
 
         private static object FindItemData(string nameKey)
         {
-            if (ItemCache.TryGetValue(nameKey, out var cached)) return cached;
+            // v1.5.8：取出缓存时验证 Unity 生命周期，避免持有已销毁 ScriptableObject
+            if (ItemCache.TryGetValue(nameKey, out var cached))
+            {
+                if (cached is UnityEngine.Object uo && uo == null)
+                {
+                    ItemCache.Remove(nameKey);
+                }
+                else
+                {
+                    return cached;
+                }
+            }
             _collectableType = _collectableType ?? ReflectionUtil.FindType("CollectableItemData");
             if (_collectableType == null) return null;
 
@@ -508,6 +619,7 @@ namespace OnTheTrainDemoCheat
             }
 
             // 2) Fallback: any PlayerInventory whose GameObject has a NetworkBehaviour with isLocalPlayer
+            // v1.5.8：移除 all[0] fallback，避免多人模式下把物品给到错误玩家
             var all = UnityEngine.Object.FindObjectsOfType(_playerInvType);
             var nbType = ReflectionUtil.FindType("Mirror.NetworkBehaviour") ?? ReflectionUtil.FindType("NetworkBehaviour");
             foreach (var o in all)
@@ -523,7 +635,8 @@ namespace OnTheTrainDemoCheat
                     }
                 }
             }
-            if (all.Length > 0) return all[0];
+            // v1.5.8：找不到 localPlayer 时返回 null，避免误给陌生人
+            MelonLogger.Warning("[Items] No local PlayerInventory found (isLocalPlayer check failed).");
             return null;
         }
 
