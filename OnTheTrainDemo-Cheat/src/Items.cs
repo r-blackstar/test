@@ -607,13 +607,15 @@ namespace OnTheTrainDemoCheat
         /// <summary>
         /// 在指定位置生成掉落物。优先用 SpawnDropItemClientWithDurability（耐久物品），
         /// 否则用 SpawnDropItemClient（普通物品）。返回 false 表示 spawner 不可用。
+        /// v1.5.12：NetworkSceneObjectSpawner.Instance 是 public static 字段不是属性，改用 GetField。
         /// </summary>
         private static bool SpawnDropsAt(List<(string itemName, int count, float durability)> drops, Vector3 pos, Vector3 fwd)
         {
             var spawnerType = ReflectionUtil.FindType("NetworkSceneObjectSpawner");
             if (spawnerType == null) return false;
-            var spawnerProp = spawnerType.GetProperty("Instance", StaticFlags);
-            var spawner = spawnerProp?.GetValue(null, null);
+            // Instance 是 public static 字段
+            var spawnerField = spawnerType.GetField("Instance", StaticFlags);
+            var spawner = spawnerField?.GetValue(null);
             if (spawner == null) return false;
 
             var spawnMethod = spawnerType.GetMethod("SpawnDropItemClient",
@@ -658,8 +660,8 @@ namespace OnTheTrainDemoCheat
 
                     // 同步到 NetworkSceneObjectSpawner（如果可用）
                     var spawnerType = ReflectionUtil.FindType("NetworkSceneObjectSpawner");
-                    var spawnerProp = spawnerType?.GetProperty("Instance", StaticFlags);
-                    var spawner = spawnerProp?.GetValue(null, null);
+                    var spawnerField = spawnerType?.GetField("Instance", StaticFlags);
+                    var spawner = spawnerField?.GetValue(null);
                     if (spawner != null)
                     {
                         var addOrUpdateMethod = spawnerType.GetMethod("AddOrUpdateObject",

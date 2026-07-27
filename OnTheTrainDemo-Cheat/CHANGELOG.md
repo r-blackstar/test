@@ -1,5 +1,14 @@
 # 作弊模组 更新日志
 
+## v1.5.12 - 2026-07-27
+
+### 修复：spawner unavailable 导致采集完全失效
+
+- 根因：`NetworkSceneObjectSpawner.Instance` 是 **public static 字段**，不是属性
+- 旧代码用 `GetProperty("Instance", StaticFlags)` 拿不到，返回 null，导致 `SpawnDropsAt` 直接返回 false，所有资源点都被跳过
+- 修复：改用 `GetField("Instance", StaticFlags)` 读取
+- 同步修复 `DestroyResourceObject` 中的 spawner 获取（也从 GetProperty 改为 GetField）
+
 ## v1.5.11 - 2026-07-27
 
 ### 重写：采集功能语义变更——物品留在原地
