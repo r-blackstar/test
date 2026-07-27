@@ -11,11 +11,11 @@ On The Train Demo 游戏的公开大厅模组（MelonLoader）。
 - 加入游戏时额外调用 `RequestLobbyList` 拉取公开大厅列表
 - 显示 Steam 状态、当前大厅 ID、搜索结果等调试信息
 
-## 安装
+## 下载安装
 
-1. 确保已安装 [MelonLoader](https://melonwiki.xyz/) 到 On The Train Demo
-2. 将 `OnTheTrainDemoPublicLobby.dll` 复制到游戏的 `Mods/` 目录
-3. 启动游戏，按 F8 打开面板
+到 [Releases 页面](https://github.com/r-blackstar/test/releases) 下载 `OnTheTrainDemo-PublicLobby-v1.0.1.zip`，解压后复制到游戏目录即可。
+
+详细安装说明见 [仓库主页 README](../README.md#下载安装)。
 
 ## 构建
 
@@ -24,8 +24,7 @@ dotnet build -c Release
 ```
 
 需要以下 DLL 放在 `lib/` 目录（从游戏 `MelonLoader/Managed/` 复制）：
-- MelonLoader.dll
-- 0Harmony.dll
+- MelonLoader.dll / 0Harmony.dll
 - Assembly-CSharp.dll
 - com.rlabrecque.steamworks.net.dll
 - Mirror.dll
