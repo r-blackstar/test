@@ -4,21 +4,20 @@
     <TargetFramework>net472</TargetFramework>
     <LangVersion>9.0</LangVersion>
     <Nullable>disable</Nullable>
-    <AssemblyName>OnTheTrainDemoPublicLobby</AssemblyName>
-    <RootNamespace>OnTheTrainDemoPublicLobby</RootNamespace>
+    <AssemblyName>OnTheTrainDemoModManager</AssemblyName>
+    <RootNamespace>OnTheTrainDemoModManager</RootNamespace>
     <OutputPath>bin\$(Configuration)</OutputPath>
     <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
-    <Version>1.0.2</Version>
-    <FileVersion>1.0.2.0</FileVersion>
-    <AssemblyVersion>1.0.2.0</AssemblyVersion>
+    <Version>1.0.0</Version>
+    <FileVersion>1.0.0.0</FileVersion>
+    <AssemblyVersion>1.0.0.0</AssemblyVersion>
     <Company>DestinyWind</Company>
     <Authors>DestinyWind</Authors>
     <Copyright>DestinyWind</Copyright>
   </PropertyGroup>
 
   <ItemGroup>
-    <!-- MelonLoader + Harmony：模组框架。Private=false 不打包到模组。 -->
     <Reference Include="MelonLoader">
       <HintPath>$(MSBuildThisFileDirectory)lib\MelonLoader.dll</HintPath>
       <Private>false</Private>
@@ -27,26 +26,6 @@
       <HintPath>$(MSBuildThisFileDirectory)lib\0Harmony.dll</HintPath>
       <Private>false</Private>
     </Reference>
-
-    <!-- 游戏主程序集（SteamLobby、SteamManager、LobbiesListManager 在此）。Private=false。 -->
-    <Reference Include="Assembly-CSharp">
-      <HintPath>$(MSBuildThisFileDirectory)lib\Assembly-CSharp.dll</HintPath>
-      <Private>false</Private>
-    </Reference>
-
-    <!-- Steamworks.NET：直接调用 SteamMatchmaking.CreateLobby(RequestLobbyList 等)。Private=false。 -->
-    <Reference Include="Steamworks.NET">
-      <HintPath>$(MSBuildThisFileDirectory)lib\com.rlabrecque.steamworks.net.dll</HintPath>
-      <Private>false</Private>
-    </Reference>
-
-    <!-- Mirror：Singleton&lt;T&gt; 和 NetworkManager.maxConnections。Private=false。 -->
-    <Reference Include="Mirror">
-      <HintPath>$(MSBuildThisFileDirectory)lib\Mirror.dll</HintPath>
-      <Private>false</Private>
-    </Reference>
-
-    <!-- Unity 引擎模块。Private=false。 -->
     <Reference Include="UnityEngine.CoreModule">
       <HintPath>$(MSBuildThisFileDirectory)lib\UnityEngine.CoreModule.dll</HintPath>
       <Private>false</Private>
@@ -57,6 +36,10 @@
     </Reference>
     <Reference Include="UnityEngine.InputLegacyModule">
       <HintPath>$(MSBuildThisFileDirectory)lib\UnityEngine.InputLegacyModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.TextRenderingModule">
+      <HintPath>$(MSBuildThisFileDirectory)lib\UnityEngine.TextRenderingModule.dll</HintPath>
       <Private>false</Private>
     </Reference>
   </ItemGroup>

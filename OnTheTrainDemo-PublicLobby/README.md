@@ -1,4 +1,4 @@
-# On The Train Demo - Public Lobby Mod
+# On The Train Demo - 公开大厅模组
 
 On The Train Demo 游戏的公开大厅模组（MelonLoader）。
 
@@ -6,14 +6,23 @@ On The Train Demo 游戏的公开大厅模组（MelonLoader）。
 
 ## 功能
 
-- **F8** 打开/关闭公开大厅控制面板
-- 开启公开模式后，建主时大厅类型改为 `Public`，陌生人可搜到
+- **默认开启公开大厅模式**：安装即生效，不再需要手动启用
+- **屏幕侧边按钮**：点击弹窗显示当前大厅信息与成员列表
+- 显示当前大厅 ID、大厅名称、房主地址、成员数/上限
+- 实时列出大厅成员昵称与 Steam ID，标记房主
 - 加入游戏时额外调用 `RequestLobbyList` 拉取公开大厅列表
-- 显示 Steam 状态、当前大厅 ID、搜索结果等调试信息
+
+## 快捷键
+
+无快捷键。改为屏幕左侧的圆形按钮，点击弹窗显示大厅信息。
+
+## 关闭公开模式
+
+修改 `MelonLoader/Preferences/OnTheTrainDemoPublicLobby.cfg` 中 `PublicLobby = false`。
 
 ## 下载安装
 
-到 [Releases 页面](https://github.com/r-blackstar/test/releases) 下载 `OnTheTrainDemo-PublicLobby-v1.0.1.zip`，解压后复制到游戏目录即可。
+到 [Releases 页面](https://github.com/r-blackstar/test/releases) 下载 `OnTheTrainDemo-PublicLobby-v1.0.2.zip`，解压后复制到游戏目录即可。
 
 详细安装说明见 [仓库主页 README](../README.md#下载安装)。
 
@@ -32,8 +41,7 @@ dotnet build -c Release
 
 ## 版本
 
-- v1.0.1：增加详细日志、手动搜索按钮、搜索状态显示
-- v1.0.0：初始版本
+见 [CHANGELOG.md](./CHANGELOG.md)
 
 ## 作者
 

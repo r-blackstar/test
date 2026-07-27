@@ -1,51 +1,55 @@
 # On The Train Demo - 模组合集
 
-[On The Train Demo](https://store.steampowered.com/app/On_The_Train_Demo) 游戏的 MelonLoader 模组合集，包含公开大厅模组和作弊模组。
+[On The Train Demo](https://store.steampowered.com/app/On_The_Train_Demo) 游戏的 MelonLoader 模组合集，包含公开大厅模组、作弊模组和模组管理器。
 
 ## 模组列表
 
 | 模组 | 版本 | 快捷键 | 功能 |
 |------|------|--------|------|
-| **公开大厅模组** (OnTheTrainDemoPublicLobby) | v1.0.1 | F8 | 让陌生人能搜到并加入你的游戏大厅 |
+| **模组管理器** (OnTheTrainDemoModManager) | v1.0.0 | F1 | 显示所有已加载的模组 |
+| **公开大厅模组** (OnTheTrainDemoPublicLobby) | v1.0.2 | 屏幕侧边按钮 | 让陌生人能搜到并加入你的游戏大厅 |
 | **作弊模组** (OnTheTrainDemoMod) | v1.5.6 | F5/F6 | 无敌/无限体力/免费制造/物品浏览器等 |
 
 ## 下载安装
 
-### 方式一：下载完整包（推荐，开箱即用）
+### 下载完整包（推荐，开箱即用）
 
 到 [Releases 页面](https://github.com/r-blackstar/test/releases) 下载对应的压缩包：
 
-- `OnTheTrainDemo-PublicLobby-v1.0.1.zip` — MelonLoader 框架 + 公开大厅模组
-- `OnTheTrainDemo-CheatMod-v1.5.6.zip` — MelonLoader 框架 + 作弊模组（含中文语言文件）
+- `OnTheTrainDemo-PublicLobby-v1.0.2.zip` — MelonLoader 框架 + 公开大厅模组 + 模组管理器
+- `OnTheTrainDemo-CheatMod-v1.5.6.zip` — MelonLoader 框架 + 作弊模组（含中文语言文件） + 模组管理器
 
-#### 安装步骤
+> 每个压缩包都包含 MelonLoader 框架和模组管理器，按需下载其中一个或两个都下载即可。
+
+### 安装步骤
 
 1. **找到游戏目录**：在 Steam 库右键「On The Train Demo」→「管理」→「浏览本地文件」
 2. **解压压缩包**：将下载的 zip 解压，你会看到 `version.dll`、`MelonLoader` 文件夹、`Mods` 文件夹
 3. **复制到游戏目录**：把解压出的所有文件/文件夹复制到游戏根目录（覆盖同名文件）
 4. **启动游戏**：双击 `On The Train Demo.exe`，首次启动会初始化 MelonLoader（几秒钟）
-5. **验证**：启动后出现 MelonLoader 控制台窗口即安装成功
+5. **验证**：启动后按 F1 出现模组管理器面板即安装成功
 
 复制后游戏目录结构：
 
 ```
 On The Train Demo/
 ├── On The Train Demo.exe
-├── version.dll                    ← 新增（MelonLoader 注入器）
-├── MelonLoader/                   ← 新增（框架目录）
-├── Mods/                          ← 新增（模组目录）
-│   ├── OnTheTrainDemoPublicLobby.dll   ← 公开大厅模组
-│   └── OnTheTrainDemoMod.dll           ← 作弊模组（按需）
-│   └── lang/                            ← 作弊模组语言文件
+├── version.dll                              ← 新增（MelonLoader 注入器）
+├── MelonLoader/                             ← 新增（框架目录）
+├── Mods/                                    ← 新增（模组目录）
+│   ├── OnTheTrainDemoModManager.dll         ← 模组管理器（必装）
+│   ├── OnTheTrainDemoPublicLobby.dll        ← 公开大厅模组（按需）
+│   ├── OnTheTrainDemoMod.dll                ← 作弊模组（按需）
+│   └── lang/                                ← 作弊模组语言文件
 │       ├── zh-CN.json
 │       └── en-US.json
 ├── On The Train Demo_Data/
 └── ...
 ```
 
-> **同时安装两个模组**：下载两个压缩包，分别解压复制到游戏目录即可，`MelonLoader` 文件夹只需复制一次（内容相同）。
+> **同时安装两个模组**：下载两个压缩包，分别解压复制到游戏目录即可。`MelonLoader` 文件夹和 `OnTheTrainDemoModManager.dll` 内容相同，只需覆盖一次。
 
-### 方式二：仅源码（开发者）
+### 仅源码（开发者）
 
 ```powershell
 git clone https://github.com/r-blackstar/test.git
@@ -56,11 +60,17 @@ dotnet build -c Release
 
 ## 使用说明
 
-### 公开大厅模组（F8）
+### 模组管理器（F1）
+
+按 F1 显示/关闭模组管理器面板，列出所有已加载的模组（名称、版本、作者、所在 DLL）。
+支持按模组名/作者过滤搜索。
+
+### 公开大厅模组（屏幕侧边按钮）
 
 | 功能 | 说明 |
 |------|------|
-| 开启/关闭公开大厅 | 切换公开模式（默认关闭） |
+| 默认开启 | 安装即生效，建主用 Public 类型 |
+| 屏幕侧边按钮 | 点击弹窗显示当前大厅信息与成员列表 |
 | 邀请好友 | 弹出 Steam 覆盖层邀请对话框 |
 | 离开当前大厅 | 退出当前大厅 |
 | 手动搜索大厅 | 手动触发公开大厅搜索 |
@@ -71,12 +81,19 @@ dotnet build -c Release
 
 **重要**：陌生人搜索方也必须安装本模组，否则游戏的「加入游戏」只搜好友列表。
 
+**关闭公开模式**：修改 `MelonLoader/Preferences/OnTheTrainDemoPublicLobby.cfg` 中 `PublicLobby = false`。
+
 ### 作弊模组（F5/F6）
 
 | 快捷键 | 功能 |
 |--------|------|
-| F5 | 物品浏览器（按分类浏览所有物品） |
+| F5 | 物品浏览器（按 12 个分类浏览所有物品，点击给予） |
 | F6 | 训练器菜单（无敌/无限体力/免费制造等） |
+
+物品浏览器交互：
+- 左键：给一格堆满
+- Shift + 左键：给 10 格堆叠
+- 右键：给 1 个
 
 ## 卸载
 
@@ -90,25 +107,24 @@ dotnet build -c Release
 **Q: 启动游戏没出现 MelonLoader 控制台？**
 A: 检查 `version.dll` 是否在游戏根目录，且未被杀毒软件拦截/删除。
 
+**Q: 按 F1 没反应？**
+A: 确认 `Mods/OnTheTrainDemoModManager.dll` 存在，且 MelonLoader 控制台显示模组加载成功。
+
 **Q: 控制台显示「SteamManager.Initialized = False」？**
 A: 必须通过 Steam 启动游戏，不能直接运行 exe。
 
 **Q: 搜索不到公开大厅？**
-A: 确认搜索方也安装了模组且开启公开模式。Demo 版玩家基数小，可能没有其他公开大厅。
+A: 确认搜索方也安装了模组（默认开启公开模式）。Demo 版玩家基数小，可能没有其他公开大厅。
 
 **Q: 作弊模组物品名是英文？**
 A: 检查 `Mods/lang/zh-CN.json` 是否存在，或在 F6 菜单中切换语言。
 
 ## 版本历史
 
-### 公开大厅模组
-- v1.0.1：增加详细日志、手动搜索按钮、搜索状态显示
-- v1.0.0：初始版本
-
-### 作弊模组
-- v1.5.6：全量汉化（287 个物品）、分类显示、移除 ESC 逻辑
-- v1.5.5：物品浏览器分类分组显示
-- v1.5.0+：无敌/无限体力/免费制造/物品浏览器
+详细的版本更新日志见各模组文件夹下的 `CHANGELOG.md`：
+- [模组管理器](./OnTheTrainDemo-ModManager/CHANGELOG.md)
+- [公开大厅模组](./OnTheTrainDemo-PublicLobby/CHANGELOG.md)
+- [作弊模组](./OnTheTrainDemo-Mod/CHANGELOG.md)
 
 ## 作者
 

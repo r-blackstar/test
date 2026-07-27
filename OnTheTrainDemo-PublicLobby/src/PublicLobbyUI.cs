@@ -4,13 +4,22 @@ using UnityEngine;
 namespace OnTheTrainDemoPublicLobby
 {
     /// <summary>
-    /// 公开大厅控制面板 - 按 F8 打开/关闭。
+    /// 公开大厅 UI v1.0.2：
+    /// - 屏幕侧边显示一个圆形按钮，点击弹出大厅信息面板
+    /// - 面板显示当前大厅 ID、成员列表、搜索状态等
+    /// - 不再使用 F8 快捷键
     /// </summary>
     internal static class PublicLobbyUI
     {
         private const int WindowId = 0x7A88;
-        private static Rect _window = new Rect(560, 60, 520, 460);
+        private const int ButtonId = 0x7A89;
+
+        // 侧边按钮（始终显示）
+        private static Rect _sideButton = new Rect(8, Screen.height / 2 - 40, 32, 80);
+        // 弹窗（点击按钮后显示）
+        private static Rect _window = new Rect(80, 80, 480, 520);
         private static bool _open;
+        private static Vector2 _memberScroll;
 
         // 调试状态：用于在面板上显示最近一次搜索结果
         internal static int LastMatchedCount = -1;   // -1 = 未搜索过
@@ -34,27 +43,37 @@ namespace OnTheTrainDemoPublicLobby
 
         public static void Draw()
         {
+            // 始终绘制屏幕侧边按钮
+            DrawSideButton();
+
+            // 弹窗（仅当 _open 时）
             if (!_open) return;
 
             _window = GUILayout.Window(WindowId, _window, (id) =>
             {
                 DrawContent();
                 GUI.DragWindow(new Rect(0, 0, 10000, 24));
-            }, "公开大厅面板 v1.0.1 - F8 关闭");
+            }, "公开大厅信息 v1.0.2 - 点击外侧关闭");
+        }
+
+        private static void DrawSideButton()
+        {
+            // 自适应屏幕尺寸（窗口大小可能变化）
+            if (_sideButton.y > Screen.height - 100)
+                _sideButton.y = Screen.height / 2 - 40;
+
+            var oldBg = GUI.backgroundColor;
+            GUI.backgroundColor = _open ? new Color(0.4f, 0.7f, 1f, 1f) : new Color(0.2f, 0.5f, 0.85f, 0.85f);
+            var label = _open ? "◀" : "▶";
+            if (GUI.Button(_sideButton, label, GUI.skin.box))
+            {
+                _open = !_open;
+            }
+            GUI.backgroundColor = oldBg;
         }
 
         private static void DrawContent()
         {
-            // 模式开关
-            bool current = Settings.PublicLobby != null && Settings.PublicLobby.Value;
-            GUILayout.Label("公开大厅模式：" + (current ? "已开启" : "已关闭"), GUI.skin.box);
-            if (GUILayout.Button(current ? "关闭公开大厅" : "开启公开大厅"))
-            {
-                Settings.Toggle();
-            }
-
-            GUILayout.Space(8);
-
             // Steam 状态
             GUILayout.Label("Steam 状态：" + (SteamManager.Initialized ? "已连接" : "未连接"), GUI.skin.box);
 
@@ -62,17 +81,13 @@ namespace OnTheTrainDemoPublicLobby
             {
                 try
                 {
-                    var sid = SteamUser.GetSteamID();
-                    GUILayout.Label("我的 Steam ID：" + sid.m_SteamID, GUI.skin.label);
                     GUILayout.Label("我的昵称：" + SteamFriends.GetPersonaName(), GUI.skin.label);
-                    try
-                    {
-                        GUILayout.Label("AppID：" + SteamUtils.GetAppID().m_AppId, GUI.skin.label);
-                    }
-                    catch { }
+                    GUILayout.Label("我的 Steam ID：" + SteamUser.GetSteamID().m_SteamID, GUI.skin.label);
                 }
                 catch { }
             }
+
+            GUILayout.Space(6);
 
             // 当前大厅状态
             try
@@ -80,17 +95,23 @@ namespace OnTheTrainDemoPublicLobby
                 var steamLobby = Singleton<SteamLobby>.Instance;
                 if (steamLobby != null)
                 {
-                    GUILayout.Space(4);
                     GUILayout.Label("当前大厅 ID：" +
                         (steamLobby.CurrentLobbyID != 0 ? steamLobby.CurrentLobbyID.ToString() : "（未加入大厅）"),
                         GUI.skin.box);
-                    GUILayout.Label("lobbyIDs 列表数量：" + (steamLobby.lobbyIDs?.Count ?? 0), GUI.skin.label);
+
+                    if (steamLobby.CurrentLobbyID != 0)
+                    {
+                        DrawCurrentLobbyInfo(new CSteamID(steamLobby.CurrentLobbyID));
+                    }
+
+                    GUILayout.Space(4);
+                    GUILayout.Label("可加入大厅列表数量：" + (steamLobby.lobbyIDs?.Count ?? 0), GUI.skin.label);
 
                     GUILayout.Space(4);
 
                     // 操作按钮
                     GUILayout.BeginHorizontal();
-                    if (GUILayout.Button("邀请好友（Steam 覆盖层）"))
+                    if (GUILayout.Button("邀请好友"))
                     {
                         steamLobby.OpenInviteDialog();
                     }
@@ -100,8 +121,7 @@ namespace OnTheTrainDemoPublicLobby
                     }
                     GUILayout.EndHorizontal();
 
-                    // 手动触发搜索（调用游戏的 GetLobbiesList，会触发我们的 Postfix）
-                    if (GUILayout.Button("手动搜索大厅（触发 GetLobbiesList）"))
+                    if (GUILayout.Button("手动搜索大厅"))
                     {
                         steamLobby.GetLobbiesList();
                     }
@@ -115,7 +135,7 @@ namespace OnTheTrainDemoPublicLobby
 
             GUILayout.Space(8);
 
-            // 调试：搜索状态
+            // 搜索状态
             GUILayout.Label("── 搜索状态 ──", GUI.skin.label);
             if (LastMatchedCount < 0)
             {
@@ -130,7 +150,49 @@ namespace OnTheTrainDemoPublicLobby
             }
 
             GUILayout.Space(8);
-            GUILayout.Label("说明：开启公开模式后，建主用 Public 类型；加入游戏时会额外调用 RequestLobbyList 拉取公开大厅。", GUI.skin.label);
+            GUILayout.Label("说明：模组默认开启公开模式，建主用 Public 类型，陌生人可通过加入游戏搜到。", GUI.skin.label);
+            GUILayout.Label("如需关闭，修改 cfg 文件 PublicLobby=false", GUI.skin.label);
+        }
+
+        /// <summary>显示当前大厅详细信息：成员列表、大厅数据等。</summary>
+        private static void DrawCurrentLobbyInfo(CSteamID lobbyID)
+        {
+            try
+            {
+                int memberCount = SteamMatchmaking.GetNumLobbyMembers(lobbyID);
+                int memberLimit = SteamMatchmaking.GetLobbyMemberLimit(lobbyID);
+                string lobbyName = SteamMatchmaking.GetLobbyData(lobbyID, "name");
+                string hostAddr = SteamMatchmaking.GetLobbyData(lobbyID, "HostAddress");
+
+                GUILayout.Space(4);
+                GUILayout.Label("大厅名称：" + (string.IsNullOrEmpty(lobbyName) ? "(未设置)" : lobbyName), GUI.skin.label);
+                GUILayout.Label("房主地址：" + (string.IsNullOrEmpty(hostAddr) ? "(未知)" : hostAddr), GUI.skin.label);
+                GUILayout.Label("成员数：" + memberCount + " / " + memberLimit, GUI.skin.label);
+
+                GUILayout.Space(4);
+                GUILayout.Label("── 成员列表 ──", GUI.skin.label);
+
+                _memberScroll = GUILayout.BeginScrollView(_memberScroll, GUILayout.Height(140));
+                for (int i = 0; i < memberCount; i++)
+                {
+                    CSteamID member = SteamMatchmaking.GetLobbyMemberByIndex(lobbyID, i);
+                    if (!member.IsValid()) continue;
+
+                    string name = SteamFriends.GetFriendPersonaName(member);
+                    bool isOwner = SteamMatchmaking.GetLobbyOwner(lobbyID) == member;
+                    string tag = isOwner ? " [房主]" : "";
+                    GUILayout.Label((i + 1) + ". " + name + tag + "  (" + member.m_SteamID + ")", GUI.skin.label);
+                }
+                if (memberCount == 0)
+                {
+                    GUILayout.Label("（暂无成员）", GUI.skin.label);
+                }
+                GUILayout.EndScrollView();
+            }
+            catch (System.Exception e)
+            {
+                GUILayout.Label("读取大厅信息失败：" + e.Message, GUI.skin.label);
+            }
         }
     }
 }

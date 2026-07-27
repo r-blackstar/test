@@ -63,10 +63,10 @@ namespace OnTheTrainDemoPublicLobby
                 }
                 catch { }
 
-                // 模组关闭时走原方法
-                if (Settings.PublicLobby == null || !Settings.PublicLobby.Value)
+                // v1.0.2：默认公开模式（除非用户在 cfg 中显式关闭）
+                if (Settings.PublicLobby != null && !Settings.PublicLobby.Value)
                 {
-                    MelonLogger.Msg("[PublicLobby] HostLobby (original) lobbyMode=" + lobbyMode +
+                    MelonLogger.Msg("[PublicLobby] HostLobby (original, public disabled by user) lobbyMode=" + lobbyMode +
                         " -> ELobbyType=" + (lobbyMode == 0 ? "k_ELobbyTypePrivate" : "k_ELobbyTypeFriendsOnly") +
                         " maxConnections=" + maxConnections);
                     return true;
@@ -111,10 +111,10 @@ namespace OnTheTrainDemoPublicLobby
                 int friendLobbies = __instance.lobbyIDs?.Count ?? 0;
                 MelonLogger.Msg("[PublicLobby] GetLobbiesList done (post) - friend lobbies found: " + friendLobbies);
 
-                // 模组关闭时不额外请求公开大厅
-                if (Settings.PublicLobby == null || !Settings.PublicLobby.Value)
+                // v1.0.2：默认公开模式（除非用户在 cfg 中显式关闭）
+                if (Settings.PublicLobby != null && !Settings.PublicLobby.Value)
                 {
-                    MelonLogger.Msg("[PublicLobby] PublicLobby mode OFF, skipping RequestLobbyList.");
+                    MelonLogger.Msg("[PublicLobby] PublicLobby mode OFF (user disabled), skipping RequestLobbyList.");
                     return;
                 }
 
