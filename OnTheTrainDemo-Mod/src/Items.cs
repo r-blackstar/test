@@ -7,17 +7,6 @@ using UnityEngine;
 
 namespace OnTheTrainDemoMod
 {
-    /// <summary>
-    /// One-click resource/craft giving + auto-gather, built on real game APIs found by decompiling
-    /// Assembly-CSharp (ilspycmd):
-    ///   - PlayerInventory.AddItemInventory(CollectableItemData, int count, float durability, int preferredSlot)
-    ///   - CollectableItemData : ScriptableObject  (field: string itemName)
-    ///   - TreeCollectable / OreCollectable : BreakableObject  -> GetDamage(PlayerInventory, float, Vector3)
-    ///   - Mirror.NetworkClient.localPlayer  to locate the local player's inventory
-    ///
-    /// Give-Items is the reliable "一键" path (instantly adds resources / crafted materials),
-    /// covering 砍树/挖矿/制作 outputs. Chop/Mine Nearby is best-effort (calls the real hit method).
-    /// </summary>
     internal static class Items
     {
         private static object _localInv;
@@ -26,7 +15,6 @@ namespace OnTheTrainDemoMod
         private static Type _gameSettingsType;
         private static readonly Dictionary<string, object> ItemCache = new Dictionary<string, object>();
 
-        /// <summary>物品浏览器条目：itemName + 显示名 + 堆叠上限。</summary>
         public struct ItemEntry
         {
             public string ItemName;
@@ -49,7 +37,6 @@ namespace OnTheTrainDemoMod
             }
         }
 
-        /// <summary>Give `amount` of the item whose itemName matches `nameKey` (exact, then partial).</summary>
         public static void Give(string nameKey, int amount)
         {
             if (string.IsNullOrEmpty(nameKey) || amount <= 0) return;
@@ -84,11 +71,6 @@ namespace OnTheTrainDemoMod
             }
         }
 
-        /// <summary>
-        /// 给予一个格子堆满的物品数量。
-        /// 堆叠上限 = inventorySlotSize / item.GetItemSizeMultiplier()，
-        /// 开启 InfiniteInventoryCapacity 时为 int.MaxValue。
-        /// </summary>
         public static void GiveStack(string nameKey)
         {
             if (string.IsNullOrEmpty(nameKey)) return;
@@ -102,27 +84,15 @@ namespace OnTheTrainDemoMod
             Give(nameKey, stack);
         }
 
-        /// <summary>
-        /// 计算指定物品在一格内的堆叠上限。
-        /// 公式：slotSize / itemSizeMultiplier
-        ///   - slotSize = GameSettings.Instance.inventorySlotSize（默认32，模组可改 int.MaxValue）
-        ///   - itemSizeMultiplier = item.GetItemSizeMultiplier()
-        ///     Single=1, x2=2, x4=4, x8=8, MaxSize=slotSize
-        /// </summary>
         public static int GetItemStackLimit(object itemData)
         {
             if (itemData == null) return 1;
             try
             {
-                // 1. 取 itemSizeMultiplier（调用 item.GetItemSizeMultiplier()）
                 int multiplier = GetItemSizeMultiplier(itemData);
                 if (multiplier <= 0) multiplier = 1;
-
-                // 2. 取 inventorySlotSize
                 int slotSize = GetInventorySlotSize();
                 if (slotSize <= 0) slotSize = 32;
-
-                // 3. 堆叠上限 = slotSize / multiplier（至少 1）
                 int limit = slotSize / multiplier;
                 return Math.Max(1, limit);
             }
@@ -135,7 +105,6 @@ namespace OnTheTrainDemoMod
 
         private static bool _itemsLoggedOnce;
 
-        /// <summary>获取所有已加载的 CollectableItemData，整理为浏览器条目列表。</summary>
         public static List<ItemEntry> GetAllItems(bool forceRefresh = false)
         {
             _collectableType = _collectableType ?? ReflectionUtil.FindType("CollectableItemData");
@@ -155,13 +124,9 @@ namespace OnTheTrainDemoMod
                 if (string.IsNullOrEmpty(itemName)) continue;
                 if (seen.Add(itemName) == false) continue;
 
-                // 优先使用模组自带翻译 JSON（键名格式：item.<itemName>，大小写不敏感）
                 var display = I18n.GetIgnoreCase("item." + itemName);
-                // 兜底：尝试读取 itemDisplayName 字段
                 if (string.IsNullOrEmpty(display))
-                {
                     display = GetMemberValue(o, "itemDisplayName") as string;
-                }
                 if (string.IsNullOrEmpty(display)) display = itemName;
 
                 list.Add(new ItemEntry
@@ -173,7 +138,6 @@ namespace OnTheTrainDemoMod
                 debugNames.Add(itemName);
             }
 
-            // 首次构建列表时把所有物品名写入日志（方便补充翻译表）
             if (!_itemsLoggedOnce && debugNames.Count > 0)
             {
                 _itemsLoggedOnce = true;
@@ -183,8 +147,6 @@ namespace OnTheTrainDemoMod
                     MelonLogger.Msg("   " + n);
             }
 
-            // 按"游戏进度阶段"排序：基础材料 → 加工材料 → 食物 → 工具 → 武器弹药
-            // → 医疗 → 建筑 → 火车 → 特殊 → 未分类
             list.Sort((a, b) =>
             {
                 int ta = GetItemTier(a.ItemName);
@@ -195,19 +157,9 @@ namespace OnTheTrainDemoMod
             return list;
         }
 
-        // ---- 内部：堆叠计算 ----
-
-        /// <summary>
-        /// 物品在游戏进度中的阶段（越小越靠前）。
-        /// 10=基础原材料 / 20=加工材料 / 30=食物饮品 / 40=医疗
-        /// 50=工具 / 60=武器弹药 / 70=建筑部件 / 80=家具装饰
-        /// 85=工作台设备 / 90=火车 / 95=特殊/剧情 / 99=未分类
-        /// 先精确匹配 ItemTierTable，再按前缀回退（处理 Iron*/Metal*/Wood*/Cooked*/Story Paper* 等系列）。
-        /// </summary>
         private static readonly Dictionary<string, int> ItemTierTable =
             new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase)
             {
-                // 10 - 基础原材料（采集/打怪掉落）
                 { "Wood", 10 }, { "Stone", 10 }, { "Coal", 10 },
                 { "Iron Ore", 10 }, { "Copper", 10 }, { "Gold", 10 }, { "Sulfur Ore", 10 },
                 { "Clay", 10 }, { "Dirt", 10 }, { "Sand", 10 }, { "Gravel", 10 },
@@ -223,8 +175,6 @@ namespace OnTheTrainDemoMod
                 { "Animal Fat", 10 }, { "Animal Horn", 10 }, { "Horn Powder", 10 },
                 { "Meat", 10 }, { "Duck Meat", 10 }, { "Zombie Flesh", 10 },
                 { "Rotten Organs", 10 }, { "Water", 10 },
-
-                // 20 - 加工材料（冶炼/制造获得）
                 { "Iron Dust", 20 }, { "Iron Ingot", 20 }, { "Iron Plate", 20 }, { "Iron Rod", 20 },
                 { "Copper Dust", 20 }, { "Copper Ingot", 20 }, { "Copper Wire", 20 },
                 { "Gold Dust", 20 }, { "Sulfur Dust", 20 }, { "Refined Sulfur", 20 },
@@ -237,20 +187,14 @@ namespace OnTheTrainDemoMod
                 { "Mechanical Parts", 20 }, { "Chemical Extract", 20 }, { "Gun Powder", 20 },
                 { "Paper", 20 }, { "Metal Scrap", 20 }, { "Metal Pipe", 20 },
                 { "Plastic Pipe", 20 }, { "Bowl", 20 }, { "Bucket", 20 }, { "Pot", 20 },
-
-                // 30 - 食物饮品
                 { "Clean Water Bottle", 30 }, { "Dirty Water Bottle", 30 }, { "Water Bottle", 30 },
                 { "Canned Food", 30 }, { "Nutrition Syrup", 30 },
                 { "Cooked Meat", 30 }, { "Cooked Mushroom", 30 },
-
-                // 40 - 医疗
                 { "Bandage", 40 }, { "Health Syringe", 40 }, { "Stamina Syringe", 40 },
                 { "Not Hungry Pill", 40 }, { "Recovery Pills", 40 }, { "Regenaration Pill", 40 },
                 { "Pills Blue", 40 }, { "Pills Green", 40 }, { "Pills Orange", 40 },
                 { "Syringe Blue", 40 }, { "Syringe Green", 40 }, { "Syringe Red", 40 },
                 { "Tonic Blue", 40 }, { "Tonic Green", 40 }, { "Tonic Red", 40 },
-
-                // 50 - 工具
                 { "Stone Axe", 50 }, { "Metal Axe", 50 },
                 { "Stone Pickaxe", 50 }, { "Metal Pickaxe", 50 },
                 { "Stone Shovel", 50 }, { "Iron Shovel", 50 }, { "Coal Shovel", 50 },
@@ -258,8 +202,6 @@ namespace OnTheTrainDemoMod
                 { "Fishing Rod", 50 }, { "Scissors", 50 }, { "Scythe", 50 },
                 { "Wrench", 50 }, { "Paint Brush", 50 }, { "Lighter", 50 },
                 { "Compass", 50 },
-
-                // 60 - 武器弹药
                 { "Crossbow", 60 }, { "Crossbow Arrow", 60 },
                 { "AK47", 60 }, { "M1911", 60 }, { "M1A", 60 }, { "MP5", 60 },
                 { "Revolver", 60 }, { "Hunting Rifle", 60 },
@@ -269,12 +211,8 @@ namespace OnTheTrainDemoMod
                 { "Fire Arrow", 60 }, { "Poison Arrow", 60 }, { "Explosive Arrow", 60 },
                 { "Dynamite", 60 }, { "Grenade", 60 }, { "F1", 60 },
                 { "Scrap Armor", 60 }, { "Plastic Helmet", 60 },
-
-                // 70 - 建筑部件（Iron*/Metal*/Wood* 前缀匹配兜底）
                 { "Fence Wood", 70 }, { "Pillar", 70 }, { "Pillar Half", 70 },
                 { "Ladder", 70 }, { "Small Ladder", 70 },
-
-                // 80 - 家具装饰
                 { "Bed", 80 }, { "Tree Bed", 80 }, { "Wooden Chair", 80 },
                 { "Table", 80 }, { "Shelf", 80 }, { "Multi Shelf", 80 },
                 { "Cabinet", 80 }, { "Decorative Cabinet", 80 },
@@ -285,8 +223,6 @@ namespace OnTheTrainDemoMod
                 { "Paintings", 80 }, { "Gramophone", 80 },
                 { "Sign", 80 }, { "Wall Sign", 80 }, { "Colored Flag", 80 },
                 { "Figurine", 80 }, { "Statuette", 80 }, { "Live Plants", 80 },
-
-                // 85 - 工作台/设备
                 { "Workbench", 85 }, { "Weapon Workbench", 85 }, { "Repair Bench", 85 },
                 { "Research Table", 85 }, { "Medical Desk", 85 },
                 { "Grill", 85 }, { "Stone Grill", 85 }, { "Oven", 85 },
@@ -297,49 +233,33 @@ namespace OnTheTrainDemoMod
                 { "Water Purifier", 85 }, { "Advanced Water Purifier", 85 },
                 { "Coal Drill", 85 }, { "Stone Quarry", 85 },
                 { "Single Planter", 85 }, { "Big Planter", 85 },
-
-                // 90 - 火车相关
                 { "Wagon", 90 },
-
-                // 95 - 特殊/剧情/管道
                 { "Ground", 95 },
                 { "Folded Pipe", 95 }, { "Standard Pipe", 95 },
                 { "Triple Pipe", 95 }, { "Quadruple Pipe", 95 },
             };
 
-        /// <summary>
-        /// 根据物品名返回游戏进度阶段。先查精确表，再用前缀回退：
-        /// Story Paper* / Cooked* → 食物或剧情；Iron*/Metal*/Wood* → 建筑部件（70）。
-        /// </summary>
         public static int GetItemTier(string itemName)
         {
             if (string.IsNullOrEmpty(itemName)) return 99;
-
-            // 精确匹配
             int t;
             if (ItemTierTable.TryGetValue(itemName, out t)) return t;
-
-            // 前缀回退（不区分大小写）
             if (itemName.StartsWith("Story Paper", StringComparison.OrdinalIgnoreCase))
-                return 95; // 剧情纸
+                return 95;
             if (itemName.StartsWith("Cooked ", StringComparison.OrdinalIgnoreCase))
-                return 30; // 烹饪食物
+                return 30;
             if (itemName.StartsWith("Iron ", StringComparison.OrdinalIgnoreCase) ||
                 itemName.StartsWith("Metal ", StringComparison.OrdinalIgnoreCase) ||
                 itemName.StartsWith("Wood ", StringComparison.OrdinalIgnoreCase))
-                return 70; // 建筑部件系列
-
-            return 99; // 未分类
+                return 70;
+            return 99;
         }
-
 
         private static int GetItemSizeMultiplier(object itemData)
         {
             try
             {
                 var itemType = itemData.GetType();
-
-                // 优先调用 GetItemSizeMultiplier()（游戏内置方法）
                 var m = itemType.GetMethod("GetItemSizeMultiplier",
                     BindingFlags.Public | BindingFlags.Instance);
                 if (m != null)
@@ -348,8 +268,6 @@ namespace OnTheTrainDemoMod
                     if (result is int i) return i;
                     if (result is long l) return (int)l;
                 }
-
-                // 兜底：读取 itemSizeType 枚举字段
                 var field = itemType.GetField("itemSizeType",
                     BindingFlags.Public | BindingFlags.Instance);
                 if (field != null)
@@ -357,7 +275,6 @@ namespace OnTheTrainDemoMod
                     var val = field.GetValue(itemData);
                     if (val != null)
                     {
-                        // 枚举底层是 int
                         if (val is int) return (int)val;
                         return Convert.ToInt32(val);
                     }
@@ -373,13 +290,10 @@ namespace OnTheTrainDemoMod
             {
                 _gameSettingsType = _gameSettingsType ?? ReflectionUtil.FindType("GameSettings");
                 if (_gameSettingsType == null) return 32;
-
-                // Singleton<GameSettings>.Instance.inventorySlotSize
                 var instProp = _gameSettingsType.GetProperty("Instance",
                     BindingFlags.Public | BindingFlags.Static);
                 var inst = instProp?.GetValue(null, null);
                 if (inst == null) return 32;
-
                 var slotField = _gameSettingsType.GetField("inventorySlotSize",
                     BindingFlags.Public | BindingFlags.Instance);
                 if (slotField != null)
@@ -393,7 +307,6 @@ namespace OnTheTrainDemoMod
             return 32;
         }
 
-        /// <summary>Best-effort: hit every tree/ore node within `radius` with lethal damage.</summary>
         public static void GatherNearby(float radius = 40f, int max = 40)
         {
             var inv = LocalInventory;
@@ -402,7 +315,6 @@ namespace OnTheTrainDemoMod
             MelonCoroutines.Start(GatherRoutine(inv, radius, max));
         }
 
-        /// <summary>Print every loaded CollectableItemData.itemName to the MelonLoader console.</summary>
         public static void ListItemNames()
         {
             _collectableType = _collectableType ?? ReflectionUtil.FindType("CollectableItemData");
@@ -448,7 +360,7 @@ namespace OnTheTrainDemoMod
                     var c = o as Component;
                     if (c == null) continue;
                     float d = Vector3.Distance(center, c.transform.position);
-                    if (d > radius) break; // sorted ascending, rest are farther
+                    if (d > radius) break;
                     try
                     {
                         getDamage?.Invoke(o, new object[] { inv, 99999f, c.transform.position });
@@ -458,7 +370,7 @@ namespace OnTheTrainDemoMod
                     {
                         MelonLogger.Warning("[Gather] " + (e.InnerException?.Message ?? e.Message));
                     }
-                    if ((done % 5) == 0) yield return null; // pace to avoid flooding one frame
+                    if ((done % 5) == 0) yield return null;
                 }
             }
             MelonLogger.Msg("[Gather] processed " + done + " nodes within " + radius + "m.");
@@ -490,7 +402,6 @@ namespace OnTheTrainDemoMod
             _playerInvType = _playerInvType ?? ReflectionUtil.FindType("PlayerInventory");
             if (_playerInvType == null) return null;
 
-            // 1) Mirror.NetworkClient.localPlayer -> GetComponent<PlayerInventory> (on self or root)
             var netClient = ReflectionUtil.FindType("Mirror.NetworkClient") ?? ReflectionUtil.FindType("NetworkClient");
             if (netClient != null)
             {
@@ -507,7 +418,6 @@ namespace OnTheTrainDemoMod
                 }
             }
 
-            // 2) Fallback: any PlayerInventory whose GameObject has a NetworkBehaviour with isLocalPlayer
             var all = UnityEngine.Object.FindObjectsOfType(_playerInvType);
             var nbType = ReflectionUtil.FindType("Mirror.NetworkBehaviour") ?? ReflectionUtil.FindType("NetworkBehaviour");
             foreach (var o in all)
