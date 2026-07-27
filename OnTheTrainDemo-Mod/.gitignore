@@ -1,0 +1,17 @@
+# Build output
+bin/
+obj/
+
+# Dependencies (referenced at compile time, copied manually - not tracked)
+lib/
+
+# Build tooling / scripts / decompiled sources
+build/
+
+# Examples (documentation only, not compiled)
+examples/
+
+# IDE / user-specific files
+.vs/
+*.user
+.DS_Store
