@@ -1,7 +1,7 @@
 using MelonLoader;
 using UnityEngine;
 
-[assembly: MelonInfo(typeof(OnTheTrainDemoCheat.Main), "On The Train Demo Cheat", "1.5.10", "DestinyWind")]
+[assembly: MelonInfo(typeof(OnTheTrainDemoCheat.Main), "On The Train Demo Cheat", "1.5.11", "DestinyWind")]
 [assembly: MelonGame("EastUpInteractive", "On The Train Demo")]
 
 namespace OnTheTrainDemoCheat
@@ -22,7 +22,7 @@ namespace OnTheTrainDemoCheat
             I18n.Load(Settings.Language.Value);
 
             Patches.Install();   // static Harmony patches - registered once, no per-frame work
-            MelonLogger.Msg("On The Train Demo Mod v1.5.10 loaded (suppress noisy 'No local PlayerInventory found' warning on main menu).");
+            MelonLogger.Msg("On The Train Demo Mod v1.5.11 loaded (GatherNearby rewrite: drop items at resource position, no longer auto-loot to inventory).");
             MelonLogger.Msg("Press F5 to toggle the item browser, F6 to toggle the trainer menu. 当前语言：" + I18n.CurrentLanguage);
         }
 

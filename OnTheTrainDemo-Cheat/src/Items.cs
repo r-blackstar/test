@@ -402,18 +402,19 @@ namespace OnTheTrainDemoCheat
         }
 
         /// <summary>
-        /// Best-effort: 一键采集附近的树木/矿石/地表拾取物/渐进式采集物（金属废料等）。
-        /// v1.5.7：radius 从 40 缩小到 20，max 从 40 调整为 30，新增 LootableTerrainItem 和 LootableTerrainItemProgressive 支持。
-        /// v1.5.8：协程单例控制（避免并发），每次调用前检测 inv 有效性。
+        /// Best-effort: 一键砍树/挖矿/采集附近的资源点。
+        /// v1.5.11：语义重写——不再直接把物品塞进玩家背包，而是：
+        ///   1) 读取资源点会掉落的物品（itemName + count + durability）
+        ///   2) 调用 NetworkSceneObjectSpawner.SpawnDropItemClient 在资源点原位置生成掉落物
+        ///   3) 标记 objectServerData.isDestroyed=true 同步网络状态，然后 Destroy 资源点
+        /// 物品会作为地上掉落物留在原地，玩家可以自行走过去捡。
         /// </summary>
-        // v1.5.8：MelonCoroutines.Start 返回 object，用 object 保存协程引用
         private static object _activeGather;
 
         public static void GatherNearby(float radius = 20f, int max = 30)
         {
             var inv = LocalInventory;
             if (inv == null) { MelonLogger.Msg("[Gather] 请先进入游戏场景再使用采集功能。"); return; }
-            _playerInvType = _playerInvType ?? ReflectionUtil.FindType("PlayerInventory");
             // v1.5.8：取消上一个未完成的协程，避免并发干扰
             if (_activeGather != null)
             {
@@ -444,20 +445,16 @@ namespace OnTheTrainDemoCheat
         {
             var pinv = inv as Component;
             Vector3 center = pinv != null ? pinv.transform.position : Vector3.zero;
-            var invType = _playerInvType ?? ReflectionUtil.FindType("PlayerInventory");
             int done = 0;
             bool reachedCap = false;
 
-            // v1.5.7：三类采集对象
-            //   TreeCollectable / OreCollectable        -> GetDamage(inv, 99999f, point) 瞬采
-            //   LootableTerrainItem                      -> Take(player)  单次拾取（蘑菇/草药等）
-            //   LootableTerrainItemProgressive           -> 反射调用 FinishLooting() 完成渐进采集（金属废料等）
+            // v1.5.11：四类资源点统一处理——读取物品信息 → 在原位置生成掉落物 → 销毁资源点
             var breakableTypes = new[]
             {
                 "TreeCollectable",                 // 砍树
                 "OreCollectable",                  // 挖矿
-                "LootableTerrainItem",             // 地表拾取物（单次采集）
-                "LootableTerrainItemProgressive"   // 渐进式采集（金属废料等，长按 F）
+                "LootableTerrainItem",             // 地表拾取物（蘑菇/草药等）
+                "LootableTerrainItemProgressive"   // 渐进式采集（金属废料等）
             };
 
             foreach (var typeName in breakableTypes)
@@ -474,46 +471,9 @@ namespace OnTheTrainDemoCheat
                     return Vector3.Distance(center, pa).CompareTo(Vector3.Distance(center, pb));
                 });
 
-                // 按类型选择采集方法
-                MethodInfo gatherMethod = null;
-                bool isTakeStyle = false;       // Take(player)
-                bool isFinishStyle = false;     // FinishLooting()
-                if (typeName == "TreeCollectable" || typeName == "OreCollectable")
-                {
-                    gatherMethod = t.GetMethod("GetDamage",
-                        new[] { invType, typeof(float), typeof(Vector3) });
-                }
-                else if (typeName == "LootableTerrainItem")
-                {
-                    gatherMethod = t.GetMethod("Take", new[] { invType });
-                    isTakeStyle = true;
-                }
-                else if (typeName == "LootableTerrainItemProgressive")
-                {
-                    // LootableTerrainItemProgressive 的 Take 方法不存在，Interact 只是开锁住按 F
-                    // 直接反射调用 private FinishLooting() 跳过渐进流程，立即完成并给物品
-                    // 注意有重载：FinishLooting() 和 FinishLooting(PlayerInventory)，取无参版本
-                    var methods = t.GetMethods(BindingFlags.NonPublic | BindingFlags.Instance);
-                    foreach (var m in methods)
-                    {
-                        if (m.Name == "FinishLooting" && m.GetParameters().Length == 0)
-                        {
-                            gatherMethod = m;
-                            break;
-                        }
-                    }
-                    isFinishStyle = true;
-                }
-
-                if (gatherMethod == null)
-                {
-                    MelonLogger.Warning("[Gather] " + typeName + ": no gather method found, skip.");
-                    continue;
-                }
-
                 foreach (var o in list)
                 {
-                    // v1.5.8：每次迭代前检测 inv 是否仍有效（玩家可能已离开场景/死亡）
+                    // 每次迭代前检测 inv 是否仍有效（玩家可能已离开场景/死亡）
                     if (pinv is UnityEngine.Object u && u == null)
                     {
                         MelonLogger.Warning("[Gather] Player destroyed mid-routine, abort.");
@@ -526,30 +486,7 @@ namespace OnTheTrainDemoCheat
                     if (d > radius) break; // sorted ascending, rest are farther
                     try
                     {
-                        if (isTakeStyle)
-                        {
-                            // Take(player)
-                            gatherMethod.Invoke(o, new object[] { inv });
-                        }
-                        else if (isFinishStyle)
-                        {
-                            // LootableTerrainItemProgressive.FinishLooting() 是 private
-                            // v1.5.8：player 字段 null 检查，若字段不存在跳过该对象
-                            var playerField = t.GetField("player",
-                                BindingFlags.NonPublic | BindingFlags.Instance);
-                            if (playerField == null)
-                            {
-                                MelonLogger.Warning("[Gather] " + typeName + ": 'player' field not found, skip object.");
-                                continue;
-                            }
-                            playerField.SetValue(o, inv);
-                            gatherMethod.Invoke(o, null);
-                        }
-                        else
-                        {
-                            // GetDamage(inv, 99999f, point)
-                            gatherMethod.Invoke(o, new object[] { inv, 99999f, c.transform.position });
-                        }
+                        SpawnAndDestroyResource(c, typeName);
                         done++;
                     }
                     catch (System.Exception e)
@@ -562,6 +499,180 @@ namespace OnTheTrainDemoCheat
             }
             MelonLogger.Msg("[Gather] processed " + done + " nodes within " + radius + "m" + (reachedCap ? " (reached cap " + max + ")" : "") + ".");
             _activeGather = null;
+        }
+
+        /// <summary>
+        /// v1.5.11：统一处理一个资源点——读取物品信息，在原位置生成掉落物，然后销毁资源点对象。
+        /// 物品信息来源：
+        ///   TreeCollectable / OreCollectable  -> collectableItemData + oreAmount
+        ///   LootableTerrainItem / Progressive -> lootableItems (List&lt;LootableItemEntry&gt;)
+        /// </summary>
+        private static void SpawnAndDestroyResource(Component resource, string typeName)
+        {
+            var pos = resource.transform.position;
+            var fwd = resource.transform.forward;
+
+            // 收集这个资源点会掉落的所有物品
+            var drops = new List<(string itemName, int count, float durability)>();
+            if (typeName == "TreeCollectable" || typeName == "OreCollectable")
+            {
+                var itemData = GetMemberValue(resource, "collectableItemData");
+                if (itemData == null)
+                {
+                    MelonLogger.Warning("[Gather] " + typeName + ": collectableItemData is null, skip.");
+                    return;
+                }
+                var itemName = GetMemberValue(itemData, "itemName") as string;
+                if (string.IsNullOrEmpty(itemName))
+                {
+                    MelonLogger.Warning("[Gather] " + typeName + ": itemName empty, skip.");
+                    return;
+                }
+
+                // oreAmount 字段：TreeCollectable 是 private，OreCollectable 是 public，反射都能取
+                int count = 1;
+                var oreAmountVal = GetMemberValue(resource, "oreAmount");
+                if (oreAmountVal is int i) count = i;
+                else if (oreAmountVal is long l) count = (int)l;
+                if (count <= 0) count = 1;
+                // 游戏原生逻辑：树/矿被砍倒时（health<=0）会额外给 1 个
+                count += 1;
+
+                drops.Add((itemName, count, GetItemDurability(itemData)));
+            }
+            else if (typeName == "LootableTerrainItem" || typeName == "LootableTerrainItemProgressive")
+            {
+                var lootableItems = GetMemberValue(resource, "lootableItems") as System.Collections.IEnumerable;
+                if (lootableItems == null)
+                {
+                    MelonLogger.Warning("[Gather] " + typeName + ": lootableItems is null, skip.");
+                    return;
+                }
+                foreach (var entry in lootableItems)
+                {
+                    if (entry == null) continue;
+                    var data = GetMemberValue(entry, "collectableData");
+                    if (data == null) continue;
+                    var itemName = GetMemberValue(data, "itemName") as string;
+                    if (string.IsNullOrEmpty(itemName)) continue;
+
+                    int count = 0;
+                    var countVal = GetMemberValue(entry, "count");
+                    if (countVal is int c) count = c;
+                    else if (countVal is long l) count = (int)l;
+                    if (count <= 0) continue;
+
+                    drops.Add((itemName, count, GetItemDurability(data)));
+                }
+                if (drops.Count == 0)
+                {
+                    MelonLogger.Warning("[Gather] " + typeName + ": no valid loot entries, skip.");
+                    return;
+                }
+            }
+            else
+            {
+                return;
+            }
+
+            // 在资源点原位置生成所有掉落物
+            if (!SpawnDropsAt(drops, pos, fwd))
+            {
+                // spawner 不可用就不销毁资源点，避免物品彻底丢失
+                MelonLogger.Warning("[Gather] spawner unavailable, keep resource " + typeName + " alive.");
+                return;
+            }
+
+            // 销毁资源点：标记 isDestroyed + 同步网络 + Destroy
+            DestroyResourceObject(resource);
+        }
+
+        /// <summary>读取 CollectableItemData 的耐久度信息（hasDurability + maxDurabilityCapacity）。</summary>
+        private static float GetItemDurability(object itemData)
+        {
+            try
+            {
+                var hd = GetMemberValue(itemData, "hasDurability");
+                if (hd is bool hasDur && hasDur)
+                {
+                    var maxDur = GetMemberValue(itemData, "maxDurabilityCapacity");
+                    if (maxDur is float f) return f;
+                    if (maxDur is int i) return i;
+                }
+            }
+            catch { }
+            return -1f;
+        }
+
+        /// <summary>
+        /// 在指定位置生成掉落物。优先用 SpawnDropItemClientWithDurability（耐久物品），
+        /// 否则用 SpawnDropItemClient（普通物品）。返回 false 表示 spawner 不可用。
+        /// </summary>
+        private static bool SpawnDropsAt(List<(string itemName, int count, float durability)> drops, Vector3 pos, Vector3 fwd)
+        {
+            var spawnerType = ReflectionUtil.FindType("NetworkSceneObjectSpawner");
+            if (spawnerType == null) return false;
+            var spawnerProp = spawnerType.GetProperty("Instance", StaticFlags);
+            var spawner = spawnerProp?.GetValue(null, null);
+            if (spawner == null) return false;
+
+            var spawnMethod = spawnerType.GetMethod("SpawnDropItemClient",
+                new[] { typeof(string), typeof(int), typeof(Vector3), typeof(Vector3) });
+            var spawnMethodDur = spawnerType.GetMethod("SpawnDropItemClientWithDurability",
+                new[] { typeof(string), typeof(int), typeof(Vector3), typeof(Vector3), typeof(float) });
+
+            if (spawnMethod == null && spawnMethodDur == null) return false;
+
+            foreach (var (name, count, durability) in drops)
+            {
+                try
+                {
+                    if (durability > 0f && spawnMethodDur != null)
+                        spawnMethodDur.Invoke(spawner, new object[] { name, count, pos, fwd, durability });
+                    else if (spawnMethod != null)
+                        spawnMethod.Invoke(spawner, new object[] { name, count, pos, fwd });
+                }
+                catch (Exception e)
+                {
+                    MelonLogger.Warning("[Gather] spawn drop failed (" + name + " x" + count + "): "
+                        + (e.InnerException?.Message ?? e.Message));
+                }
+            }
+            return true;
+        }
+
+        /// <summary>
+        /// 销毁资源点对象：标记 objectServerData.isDestroyed=true，调用 AddOrUpdateObject 同步网络状态，然后 Destroy。
+        /// </summary>
+        private static void DestroyResourceObject(Component resource)
+        {
+            try
+            {
+                var osd = GetMemberValue(resource, "objectServerData");
+                if (osd != null)
+                {
+                    var osdType = osd.GetType();
+                    var isDestroyedField = osdType.GetField("isDestroyed",
+                        BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+                    isDestroyedField?.SetValue(osd, true);
+
+                    // 同步到 NetworkSceneObjectSpawner（如果可用）
+                    var spawnerType = ReflectionUtil.FindType("NetworkSceneObjectSpawner");
+                    var spawnerProp = spawnerType?.GetProperty("Instance", StaticFlags);
+                    var spawner = spawnerProp?.GetValue(null, null);
+                    if (spawner != null)
+                    {
+                        var addOrUpdateMethod = spawnerType.GetMethod("AddOrUpdateObject",
+                            new[] { osdType });
+                        addOrUpdateMethod?.Invoke(spawner, new object[] { osd });
+                    }
+                }
+                UnityEngine.Object.Destroy(resource.gameObject);
+            }
+            catch (Exception e)
+            {
+                MelonLogger.Warning("[Gather] destroy resource failed: " + e.Message);
+            }
         }
 
         private static object FindItemData(string nameKey)

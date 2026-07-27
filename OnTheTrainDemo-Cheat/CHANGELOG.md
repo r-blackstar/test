@@ -1,5 +1,25 @@
 # 作弊模组 更新日志
 
+## v1.5.11 - 2026-07-27
+
+### 重写：采集功能语义变更——物品留在原地
+
+**核心变更**：`GatherNearby` 不再把物品直接塞进玩家背包，而是改为「在资源点原位置生成掉落物 + 销毁资源点」。物品作为地上掉落物留在原地，玩家可以自行走过去捡。
+
+**原因**：
+- 旧实现 `LootableTerrainItemProgressive` 调用 `FinishLooting()` 只销毁对象但不给物品（物品原本是在 `DistributeItemsForTick` 里按 tick 给的）
+- 旧实现 `TreeCollectable/OreCollectable` 调用 `GetDamage(inv, 99999f, point)` 会直接把物品塞进玩家背包
+- 用户需求：砍/挖/采集后物品应作为掉落物留在原地，不自动进背包
+
+**新实现**：
+- 新增 `SpawnAndDestroyResource` 方法，统一处理 4 类资源点（树/矿/地表拾取/渐进采集）
+- 读取资源点的物品信息：
+  - `TreeCollectable`/`OreCollectable`：`collectableItemData` + `oreAmount`（+1 模拟原生 health<=0 时的额外掉落）
+  - `LootableTerrainItem`/`LootableTerrainItemProgressive`：遍历 `lootableItems` 列表（`List<LootableItemEntry>`）
+- 在资源点 `transform.position` 调用 `NetworkSceneObjectSpawner.SpawnDropItemClient`（耐久物品用 `SpawnDropItemClientWithDurability`）生成掉落物
+- 标记 `objectServerData.isDestroyed=true` + `AddOrUpdateObject` 同步网络状态，然后 `Destroy` 资源点对象
+- 若 spawner 不可用则不销毁资源点，避免物品彻底丢失
+
 ## v1.5.10 - 2026-07-27
 
 ### 修复：主菜单日志噪音
