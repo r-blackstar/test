@@ -8,7 +8,7 @@
 |------|------|--------|------|
 | **模组管理器** (OnTheTrainDemoModManager) | v1.0.0 | F1 | 显示所有已加载的模组 |
 | **公开大厅模组** (OnTheTrainDemoPublicLobby) | v1.0.2 | 屏幕侧边按钮 | 让陌生人能搜到并加入你的游戏大厅 |
-| **作弊模组** (OnTheTrainDemoMod) | v1.5.6 | F5/F6 | 无敌/无限体力/免费制造/物品浏览器等 |
+| **作弊模组** (OnTheTrainDemoCheat) | v1.5.6 | F5/F6 | 无敌/无限体力/免费制造/物品浏览器等 |
 
 ## 下载安装
 
@@ -17,7 +17,7 @@
 到 [Releases 页面](https://github.com/r-blackstar/test/releases) 下载对应的压缩包：
 
 - `OnTheTrainDemo-PublicLobby-v1.0.2.zip` — MelonLoader 框架 + 公开大厅模组 + 模组管理器
-- `OnTheTrainDemo-CheatMod-v1.5.6.zip` — MelonLoader 框架 + 作弊模组（含中文语言文件） + 模组管理器
+- `OnTheTrainDemo-Cheat-v1.5.6.zip` — MelonLoader 框架 + 作弊模组（含中文语言文件） + 模组管理器
 
 > 每个压缩包都包含 MelonLoader 框架和模组管理器，按需下载其中一个或两个都下载即可。
 
@@ -39,7 +39,7 @@ On The Train Demo/
 ├── Mods/                                    ← 新增（模组目录）
 │   ├── OnTheTrainDemoModManager.dll         ← 模组管理器（必装）
 │   ├── OnTheTrainDemoPublicLobby.dll        ← 公开大厅模组（按需）
-│   ├── OnTheTrainDemoMod.dll                ← 作弊模组（按需）
+│   ├── OnTheTrainDemoCheat.dll              ← 作弊模组（按需）
 │   └── lang/                                ← 作弊模组语言文件
 │       ├── zh-CN.json
 │       └── en-US.json
@@ -124,7 +124,7 @@ A: 检查 `Mods/lang/zh-CN.json` 是否存在，或在 F6 菜单中切换语言�
 详细的版本更新日志见各模组文件夹下的 `CHANGELOG.md`：
 - [模组管理器](./OnTheTrainDemo-ModManager/CHANGELOG.md)
 - [公开大厅模组](./OnTheTrainDemo-PublicLobby/CHANGELOG.md)
-- [作弊模组](./OnTheTrainDemo-Mod/CHANGELOG.md)
+- [作弊模组](./OnTheTrainDemo-Cheat/CHANGELOG.md)
 
 ## 作者
 

@@ -2,6 +2,7 @@
 
 ## v1.5.6 - 2026-07-27
 
+- **项目重命名**：`OnTheTrainDemoMod` → `OnTheTrainDemoCheat`（项目文件夹、AssemblyName、namespace、DLL 文件名同步更新）
 - 全量汉化：287 个物品名称中英文对照
 - 物品浏览器按 12 个分类分组显示（基础原材料→未分类）
 - 移除 ESC 按键相关逻辑，避免与游戏原生 ESC 冲突

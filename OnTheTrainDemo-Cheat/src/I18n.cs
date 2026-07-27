@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
@@ -6,7 +6,7 @@ using System.Reflection;
 using System.Text;
 using MelonLoader;
 
-namespace OnTheTrainDemoMod
+namespace OnTheTrainDemoCheat
 {
     /// <summary>
     /// 模组菜单的国际化支持。
@@ -19,7 +19,7 @@ namespace OnTheTrainDemoMod
     /// </summary>
     internal static class I18n
     {
-        private const string ResPrefix = "OnTheTrainDemoMod.lang.";
+        private const string ResPrefix = "OnTheTrainDemoCheat.lang.";
         private const string FallbackLang = "en-US";
 
         private static readonly Dictionary<string, string> _strings =

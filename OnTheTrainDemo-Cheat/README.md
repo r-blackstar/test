@@ -33,7 +33,7 @@ On The Train Demo 游戏的作弊模组（MelonLoader），包含无敌、无限
 
 ## 下载安装
 
-到 [Releases 页面](https://github.com/r-blackstar/test/releases) 下载 `OnTheTrainDemo-CheatMod-v1.5.6.zip`，解压后复制到游戏目录即可。
+到 [Releases 页面](https://github.com/r-blackstar/test/releases) 下载 `OnTheTrainDemo-Cheat-v1.5.6.zip`，解压后复制到游戏目录即可。
 
 详细安装说明见 [仓库主页 README](../README.md#下载安装)。
 
@@ -49,7 +49,7 @@ dotnet build -c Release
 
 ## 版本
 
-- v1.5.6：全量汉化（287 个物品）、分类显示、移除 ESC 逻辑
+- v1.5.6：项目重命名 OnTheTrainDemoMod→OnTheTrainDemoCheat、全量汉化（287 个物品）、分类显示、移除 ESC 逻辑
 - v1.5.5：物品浏览器分类分组显示
 - v1.5.0+：无敌/无限体力/免费制造/物品浏览器
 

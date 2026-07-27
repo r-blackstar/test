@@ -1,8 +1,12 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using UnityEngine;
 
-namespace OnTheTrainDemoMod
+namespace OnTheTrainDemoCheat
 {
+    /// <summary>
+    /// IMGUI overlay + trainer window. Drawn every frame in OnGUI.
+    /// 所有可见文案都从 I18n 取，方便多语言切换。按 F6 切换菜单。
+    /// </summary>
     internal static class MenuUI
     {
         private const int WindowId = 0x1337;
@@ -11,6 +15,7 @@ namespace OnTheTrainDemoMod
         private static string _itemName = "Wood";
         private static string _amount = "50";
 
+        // 语言列表缓存：仅在菜单打开时刷新一次，避免每帧扫描目录。
         private static List<KeyValuePair<string, string>> _langList;
         private static int _langIndex;
 
@@ -81,8 +86,13 @@ namespace OnTheTrainDemoMod
             }, I18n.Get("window.title"));
         }
 
+        /// <summary>
+        /// 语言选择器：列出 Mods/lang/*.json 中所有可用语言（按代码排序），
+        /// 点击按钮即时切换并写回配置。每次菜单打开时刷新一次列表。
+        /// </summary>
         private static void DrawLanguageSelector()
         {
+            // 首次或语言列表为空时刷新
             if (_langList == null || _langList.Count == 0)
                 RefreshLangList();
 
@@ -97,13 +107,14 @@ namespace OnTheTrainDemoMod
             if (_langList == null || _langList.Count <= 1)
                 return;
 
+            // 多语言按钮网格：每个按钮显示该语言的显示名，点击切换。
             var labels = new string[_langList.Count];
             for (int i = 0; i < _langList.Count; i++)
             {
                 labels[i] = _langList[i].Value;
                 if (_langList[i].Key == I18n.CurrentLanguage)
                 {
-                    labels[i] = "▶ " + labels[i];
+                    labels[i] = "▶ " + labels[i];   // 标记当前选中
                     _langIndex = i;
                 }
             }
@@ -114,6 +125,7 @@ namespace OnTheTrainDemoMod
                 var target = _langList[newIdx].Key;
                 I18n.SwitchTo(target);
                 _langIndex = newIdx;
+                // 切换后刷新按钮文案（当前语言标记会移动）
                 RefreshLangList();
             }
         }

@@ -5,8 +5,8 @@
     <LangVersion>latest</LangVersion>
     <Nullable>disable</Nullable>
     <ImplicitUsings>disable</ImplicitUsings>
-    <AssemblyName>OnTheTrainDemoMod</AssemblyName>
-    <RootNamespace>OnTheTrainDemoMod</RootNamespace>
+    <AssemblyName>OnTheTrainDemoCheat</AssemblyName>
+    <RootNamespace>OnTheTrainDemoCheat</RootNamespace>
     <OutputPath>bin\$(Configuration)</OutputPath>
     <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
@@ -19,19 +19,27 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <!-- 内嵌语言文件作为运行时回退；首次启动会释放到 Mods/OnTheTrainDemoCheat/lang/ 方便编辑。
+         显式 LogicalName 避免 .NET 在资源名里做特殊字符替换。 -->
     <EmbeddedResource Include="lang\zh-CN.json">
-      <LogicalName>OnTheTrainDemoMod.lang.zh-CN.json</LogicalName>
+      <LogicalName>OnTheTrainDemoCheat.lang.zh-CN.json</LogicalName>
     </EmbeddedResource>
     <EmbeddedResource Include="lang\en-US.json">
-      <LogicalName>OnTheTrainDemoMod.lang.en-US.json</LogicalName>
+      <LogicalName>OnTheTrainDemoCheat.lang.en-US.json</LogicalName>
     </EmbeddedResource>
   </ItemGroup>
 
   <ItemGroup>
+    <!-- Provides .NET Framework 4.7.2 reference assemblies so net472 builds cross-platform
+         with only the .NET 8 SDK installed (no separate VS / Framework targeting pack needed). -->
     <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" PrivateAssets="all" />
   </ItemGroup>
 
   <ItemGroup>
+    <!-- MelonLoader is NOT published to nuget.org. It ships as MelonLoader.x64.zip on GitHub.
+         For Unity Mono games (like this one), reference the net472 build of MelonLoader.dll /
+         0Harmony.dll from that zip. Private=false so they are NOT bundled into the build output —
+         the game's MelonLoader provides them at runtime. -->
     <Reference Include="MelonLoader">
       <HintPath>$(MSBuildThisFileDirectory)lib\MelonLoader.dll</HintPath>
       <Private>false</Private>
@@ -43,6 +51,8 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- Game engine references (copied from the game's Managed folder). Private=false so they are
+         NOT bundled into the build output — the game provides them at runtime. -->
     <Reference Include="UnityEngine.CoreModule">
       <HintPath>$(MSBuildThisFileDirectory)lib\UnityEngine.CoreModule.dll</HintPath>
       <Private>false</Private>
@@ -63,6 +73,14 @@
       <HintPath>$(MSBuildThisFileDirectory)lib\UnityEngine.TextRenderingModule.dll</HintPath>
       <Private>false</Private>
     </Reference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Documentation/template only; never compiled into the mod -->
+    <Compile Remove="examples\**" />
+    <None Include="examples\**" />
+    <!-- Exclude tooling output (decompiled sources, download scripts) from compilation -->
+    <Compile Remove="build\**" />
   </ItemGroup>
 
 </Project>

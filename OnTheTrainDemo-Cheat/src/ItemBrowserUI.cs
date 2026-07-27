@@ -1,8 +1,8 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 
-namespace OnTheTrainDemoMod
+namespace OnTheTrainDemoCheat
 {
     /// <summary>
     /// 物品浏览器 UI v1.0 - 按 F5 打开/关闭。
