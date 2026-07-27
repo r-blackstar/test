@@ -4,14 +4,8 @@ using UnityEngine;
 
 namespace OnTheTrainDemoMod
 {
-    /// <summary>
-    /// Button-triggered actions only. The continuous cheats (God/Stamina/Ammo/Fuel) are now
-    /// static Harmony patches (see Patches.cs), so there is NO per-frame polling here — that
-    /// was the cause of the previous FPS drop.
-    /// </summary>
     internal static class Cheats
     {
-        /// <summary>Best-effort: advance the game's day cycle via TrainGameManager.</summary>
         public static void SkipToMorning()
         {
             var mgr = ReflectionUtil.FindComponent<object>("TrainGameManager")
@@ -40,7 +34,6 @@ namespace OnTheTrainDemoMod
             MelonLogger.Warning("[SkipToMorning] No suitable method found on TrainGameManager.");
         }
 
-        /// <summary>Local player position from the cached inventory reference (no per-frame scanning).</summary>
         public static Vector3? GetPlayerPosition()
         {
             var inv = Items.LocalInventory as Component;

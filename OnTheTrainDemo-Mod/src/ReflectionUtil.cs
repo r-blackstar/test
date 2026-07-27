@@ -5,11 +5,6 @@ using UnityEngine;
 
 namespace OnTheTrainDemoMod
 {
-    /// <summary>
-    /// Reflection helpers that locate game types/members at runtime.
-    /// The mod never references Assembly-CSharp at compile time, so it stays resilient
-    /// to small game updates and avoids pulling in the full game dependency graph.
-    /// </summary>
     internal static class ReflectionUtil
     {
         private static readonly Dictionary<string, Type> TypeCache = new Dictionary<string, Type>();
@@ -20,7 +15,6 @@ namespace OnTheTrainDemoMod
         private const BindingFlags AllFlags =
             InstanceFlags | BindingFlags.Static;
 
-        /// <summary>Locate a type by simple name or full name across all loaded assemblies.</summary>
         public static Type FindType(string name)
         {
             if (string.IsNullOrEmpty(name)) return null;
@@ -28,7 +22,6 @@ namespace OnTheTrainDemoMod
 
             foreach (var asm in AppDomain.CurrentDomain.GetAssemblies())
             {
-                // Fast path: exact full-name match.
                 try
                 {
                     var direct = asm.GetType(name);
@@ -36,7 +29,6 @@ namespace OnTheTrainDemoMod
                 }
                 catch { }
 
-                // Slow path: scan all (partially loadable) types, matching by simple name.
                 Type[] types;
                 try { types = asm.GetTypes(); }
                 catch (ReflectionTypeLoadException ex) { types = ex.Types ?? Type.EmptyTypes; }
@@ -53,10 +45,9 @@ namespace OnTheTrainDemoMod
                 }
             }
 
-            return null; // do NOT cache null — the type may load later.
+            return null;
         }
 
-        /// <summary>Find the first type whose full name contains the given fragment.</summary>
         public static Type FindTypeContains(string fragment)
         {
             if (string.IsNullOrEmpty(fragment)) return null;
@@ -77,7 +68,6 @@ namespace OnTheTrainDemoMod
             return null;
         }
 
-        /// <summary>Find the first active instance of a component type by name.</summary>
         public static T FindComponent<T>(string typeName) where T : class
         {
             var t = FindType(typeName);
@@ -87,7 +77,6 @@ namespace OnTheTrainDemoMod
             return arr[0] as T;
         }
 
-        /// <summary>Invoke the first existing no-arg method among the candidate names.</summary>
         public static object InvokeMethod(object obj, params string[] names)
         {
             if (obj == null) return null;
@@ -98,13 +87,12 @@ namespace OnTheTrainDemoMod
                 if (m != null)
                 {
                     try { return m.Invoke(obj, null); }
-                    catch { /* overload mismatch — try next candidate */ }
+                    catch { }
                 }
             }
             return null;
         }
 
-        /// <summary>Set the first settable property/field among the candidate names.</summary>
         public static void SetMemberValue(object obj, object value, params string[] names)
         {
             if (obj == null) return;
@@ -126,7 +114,6 @@ namespace OnTheTrainDemoMod
             }
         }
 
-        /// <summary>Read the first readable property/field among the candidate names.</summary>
         public static object GetMemberValue(object obj, params string[] names)
         {
             if (obj == null) return null;
@@ -155,7 +142,6 @@ namespace OnTheTrainDemoMod
             var src = value.GetType();
             if (target == src || target.IsAssignableFrom(src)) return value;
 
-            // Common numeric coercions for when the member type differs from the value type.
             try
             {
                 if (target == typeof(float))  return Convert.ToSingle(value);

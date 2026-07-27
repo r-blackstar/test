@@ -2,16 +2,18 @@
 bin/
 obj/
 
-# Dependencies (referenced at compile time, copied manually - not tracked)
+# External DLLs (game-provided, not committed)
 lib/
 
-# Build tooling / scripts / decompiled sources
-build/
-
-# Examples (documentation only, not compiled)
-examples/
-
-# IDE / user-specific files
+# IDE files
 .vs/
+.vscode/
 *.user
+*.suo
+
+# OS files
+Thumbs.db
 .DS_Store
+
+# MelonLoader build artifacts
+*.dll.mdb
